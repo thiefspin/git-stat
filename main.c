@@ -31,6 +31,14 @@
 #define EXIT_SUCCESS_CODE 0
 #define EXIT_ERROR_CODE 1
 #define EXIT_NOT_GIT_REPO 2
+#define EXIT_HELP_SHOWN 3
+#define EXIT_VERSION_SHOWN 4
+
+/* Output formats */
+typedef enum {
+    OUTPUT_DEFAULT,
+    OUTPUT_JSON
+} OutputFormat;
 
 /**
  * Author statistics structure
@@ -86,7 +94,9 @@ static int get_author_stats(GitStats *stats);
 static int get_branch_stats(GitStats *stats);
 static int get_file_stats(GitStats *stats);
 static void print_stats(const GitStats *stats);
+static void print_stats_json(const GitStats *stats);
 static void print_help(void);
+static int parse_arguments(int argc, char *argv[], OutputFormat *format);
 static char* execute_git_command(const char* command);
 static int count_lines_in_file(const char* filename);
 static void get_file_extension(const char* filename, char* extension, size_t extension_size);
@@ -99,25 +109,21 @@ static void init_git_stats(GitStats *stats);
  * Main entry point
  */
 int main(int argc, char *argv[]) {
-    printf("%s v%s\n", PROGRAM_NAME, VERSION_STRING);
-    printf("============================\n\n");
-
+    OutputFormat output_format = OUTPUT_DEFAULT;
+    
     /* Parse command line arguments */
-    if (argc > 1) {
-        if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
-            print_help();
-            return EXIT_SUCCESS_CODE;
-        }
-        
-        if (strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--version") == 0) {
-            printf("%s\n", get_version_string());
-            return EXIT_SUCCESS_CODE;
-        }
-        
-        /* Unknown argument */
-        fprintf(stderr, "Error: Unknown argument '%s'\n", argv[1]);
-        fprintf(stderr, "Use --help for usage information.\n");
-        return EXIT_ERROR_CODE;
+    int parse_result = parse_arguments(argc, argv, &output_format);
+    if (parse_result == EXIT_HELP_SHOWN || parse_result == EXIT_VERSION_SHOWN) {
+        return EXIT_SUCCESS_CODE;
+    }
+    if (parse_result != 0) {
+        return parse_result;
+    }
+    
+    /* Print header for default output only */
+    if (output_format == OUTPUT_DEFAULT) {
+        printf("%s v%s\n", PROGRAM_NAME, VERSION_STRING);
+        printf("============================\n\n");
     }
 
     /* Verify we're in a git repository */
@@ -136,7 +142,13 @@ int main(int argc, char *argv[]) {
         return EXIT_ERROR_CODE;
     }
 
-    print_stats(&stats);
+    /* Output results in requested format */
+    if (output_format == OUTPUT_JSON) {
+        print_stats_json(&stats);
+    } else {
+        print_stats(&stats);
+    }
+    
     return EXIT_SUCCESS_CODE;
 }
 
@@ -165,7 +177,7 @@ static void init_git_stats(GitStats *stats) {
 static int get_git_stats(GitStats *stats) {
     assert(stats != NULL);
     
-    printf("Analyzing repository...\n");
+    /* Only show progress for default output */
     
     if (get_repository_info(stats) != 0) {
         fprintf(stderr, "Warning: Failed to get repository information\n");
@@ -186,8 +198,6 @@ static int get_git_stats(GitStats *stats) {
     if (get_file_stats(stats) != 0) {
         fprintf(stderr, "Warning: Failed to get file statistics\n");
     }
-    
-    printf("Analysis complete!\n\n");
     return 0;
 }
 
@@ -612,6 +622,124 @@ static void print_stats(const GitStats *stats) {
 }
 
 /**
+ * Print statistics in JSON format
+ */
+static void print_stats_json(const GitStats *stats) {
+    assert(stats != NULL);
+    
+    printf("{\n");
+    printf("  \"repository\": {\n");
+    printf("    \"name\": \"%s\",\n", stats->repo_name);
+    printf("    \"current_branch\": \"%s\"\n", stats->current_branch);
+    printf("  },\n");
+    
+    printf("  \"summary\": {\n");
+    printf("    \"total_commits\": %d,\n", stats->total_commits);
+    printf("    \"total_authors\": %d,\n", stats->total_authors);
+    printf("    \"total_branches\": %d,\n", stats->total_branches);
+    printf("    \"total_files\": %d,\n", stats->total_files);
+    printf("    \"total_lines\": %ld\n", stats->total_lines);
+    printf("  },\n");
+    
+    /* Authors array */
+    printf("  \"authors\": [\n");
+    int authors_to_show = (stats->total_authors < MAX_AUTHORS_DISPLAY) ? 
+                         stats->total_authors : MAX_AUTHORS_DISPLAY;
+    for (int i = 0; i < authors_to_show; i++) {
+        printf("    {\n");
+        printf("      \"name\": \"%s\",\n", stats->authors[i].name);
+        printf("      \"commits\": %d,\n", stats->authors[i].commit_count);
+        printf("      \"lines_added\": %d,\n", stats->authors[i].lines_added);
+        printf("      \"lines_deleted\": %d\n", stats->authors[i].lines_deleted);
+        printf("    }%s\n", (i < authors_to_show - 1) ? "," : "");
+    }
+    printf("  ],\n");
+    
+    /* Branches array */
+    printf("  \"branches\": [\n");
+    int branches_to_show = (stats->total_branches < MAX_BRANCHES_DISPLAY) ? 
+                          stats->total_branches : MAX_BRANCHES_DISPLAY;
+    for (int i = 0; i < branches_to_show; i++) {
+        printf("    {\n");
+        printf("      \"name\": \"%s\",\n", stats->branches[i].name);
+        printf("      \"commits\": %d\n", stats->branches[i].commit_count);
+        printf("    }%s\n", (i < branches_to_show - 1) ? "," : "");
+    }
+    printf("  ],\n");
+    
+    /* File types array */
+    printf("  \"file_types\": [\n");
+    if (stats->file_type_count > 0) {
+        /* Create a copy for sorting */
+        FileType temp_types[MAX_FILE_TYPES];
+        memcpy(temp_types, stats->file_types, 
+               sizeof(FileType) * stats->file_type_count);
+        
+        /* Sort by count */
+        qsort(temp_types, stats->file_type_count, sizeof(FileType), 
+              compare_file_types_by_count);
+        
+        int types_to_show = (stats->file_type_count < MAX_FILE_TYPES_DISPLAY) ? 
+                           stats->file_type_count : MAX_FILE_TYPES_DISPLAY;
+        
+        for (int i = 0; i < types_to_show; i++) {
+            printf("    {\n");
+            printf("      \"extension\": \"%s\",\n", temp_types[i].extension);
+            printf("      \"files\": %d,\n", temp_types[i].count);
+            printf("      \"lines\": %ld\n", temp_types[i].total_lines);
+            printf("    }%s\n", (i < types_to_show - 1) ? "," : "");
+        }
+    }
+    printf("  ]\n");
+    printf("}\n");
+}
+
+/**
+ * Parse command line arguments
+ */
+static int parse_arguments(int argc, char *argv[], OutputFormat *format) {
+    assert(format != NULL);
+    
+    *format = OUTPUT_DEFAULT;
+    
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            print_help();
+            return EXIT_HELP_SHOWN;
+        }
+        
+        if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
+            printf("%s\n", get_version_string());
+            return EXIT_VERSION_SHOWN;
+        }
+        
+        if (strcmp(argv[i], "--output") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "Error: --output requires a format argument\n");
+                fprintf(stderr, "Supported formats: json\n");
+                return EXIT_ERROR_CODE;
+            }
+            
+            i++; /* Move to format argument */
+            if (strcmp(argv[i], "json") == 0) {
+                *format = OUTPUT_JSON;
+            } else {
+                fprintf(stderr, "Error: Unknown output format '%s'\n", argv[i]);
+                fprintf(stderr, "Supported formats: json\n");
+                return EXIT_ERROR_CODE;
+            }
+        } else {
+            /* Unknown argument */
+            fprintf(stderr, "Error: Unknown argument '%s'\n", argv[i]);
+            fprintf(stderr, "Use --help for usage information.\n");
+            return EXIT_ERROR_CODE;
+        }
+    }
+    
+    return 0;
+}
+
+/**
  * Print help information
  */
 static void print_help(void) {
@@ -620,8 +748,10 @@ static void print_help(void) {
     printf("Usage: git-stat [OPTIONS]\n\n");
     printf("%s\n\n", PROGRAM_DESCRIPTION);
     printf("Options:\n");
-    printf("  -h, --help     Show this help message\n");
-    printf("  -v, --version  Show version information\n\n");
+    printf("  -h, --help          Show this help message\n");
+    printf("  -v, --version       Show version information\n");
+    printf("  --output FORMAT     Output format (default: human-readable)\n");
+    printf("                      Supported formats: json\n\n");
     printf("Features:\n");
     printf("  • Repository overview (commits, authors, branches, files)\n");
     printf("  • Top contributors with commit counts and line changes\n");
@@ -629,9 +759,10 @@ static void print_help(void) {
     printf("  • File type analysis with line counts\n");
     printf("  • Works completely offline with local git data\n\n");
     printf("Examples:\n");
-    printf("  git-stat          # Analyze current repository\n");
-    printf("  git-stat --help   # Show this help\n");
-    printf("  git-stat --version # Show version info\n\n");
+    printf("  git-stat                    # Analyze current repository\n");
+    printf("  git-stat --output json      # Output in JSON format\n");
+    printf("  git-stat --help             # Show this help\n");
+    printf("  git-stat --version          # Show version info\n\n");
     printf("Exit Codes:\n");
     printf("  0  Success\n");
     printf("  1  General error\n");

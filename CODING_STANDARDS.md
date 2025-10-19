@@ -334,9 +334,53 @@ valgrind --leak-check=full ./git-stat
 clang -fsanitize=address -g -o git-stat-debug main.c
 ```
 
+## JSON Output Best Practices
+
+### Format Consistency
+- **Use consistent indentation** (2 spaces for readability)
+- **Follow JSON standards** strictly for machine parsing
+- **Escape special characters** in string values
+
+```c
+/* Proper JSON string escaping */
+printf("      \"name\": \"%s\",\n", stats->authors[i].name);
+```
+
+### Structure Design
+- **Use meaningful key names** that are self-documenting
+- **Group related data** into logical objects
+- **Maintain consistent data types** across similar fields
+
+```c
+printf("  \"summary\": {\n");
+printf("    \"total_commits\": %d,\n", stats->total_commits);
+printf("    \"total_authors\": %d,\n", stats->total_authors);
+printf("  },\n");
+```
+
+### Array Handling
+- **Handle empty arrays** gracefully
+- **Use consistent formatting** for array elements
+- **Proper comma placement** (no trailing commas)
+
+```c
+for (int i = 0; i < authors_to_show; i++) {
+    printf("    {\n");
+    printf("      \"name\": \"%s\",\n", stats->authors[i].name);
+    printf("      \"commits\": %d\n", stats->authors[i].commit_count);
+    printf("    }%s\n", (i < authors_to_show - 1) ? "," : "");
+}
+```
+
+### Error Handling in JSON
+- **Validate data before output** to prevent malformed JSON
+- **Handle null/empty values** appropriately
+- **Ensure valid JSON structure** even with missing data
+
 This coding standard ensures our C code is:
 - **Safe**: Protected against buffer overflows and memory leaks
 - **Reliable**: Proper error handling and resource management
 - **Maintainable**: Well-documented and consistently structured
 - **Portable**: Standards-compliant and cross-platform
 - **Secure**: Protected against common vulnerabilities
+- **Interoperable**: Produces valid, parseable output formats

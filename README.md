@@ -15,6 +15,7 @@ A lightweight, fast C utility that provides comprehensive statistics for git rep
 - ⚡ **Fast & Lightweight**: Pure C implementation with minimal dependencies
 - 🔒 **Offline Operation**: Works entirely with local git data, no network required
 - 🎯 **Cross-Platform**: Supports Linux, macOS, and Windows
+- 📤 **Multiple Output Formats**: Human-readable and JSON output for automation
 
 ## Installation
 
@@ -60,12 +61,15 @@ git-stat
 ### Command Line Options
 
 ```bash
-git-stat           # Analyze current repository
-git-stat --help    # Show help information
-git-stat -h        # Show help information
+git-stat                    # Analyze current repository (human-readable output)
+git-stat --output json      # Output in JSON format
+git-stat --help             # Show help information
+git-stat -h                 # Show help information
 ```
 
 ### Example Output
+
+#### Human-Readable Format (Default)
 
 ```
 Git Statistics Utility v1.0
@@ -105,6 +109,62 @@ Repository Statistics for: my-awesome-project
   md            8 files,       876 lines
   txt           12 files       543 lines
   json          5 files        234 lines
+```
+
+#### JSON Format
+
+When using `--output json`, the utility outputs structured JSON data suitable for automation and integration with other tools:
+
+```json
+{
+  "repository": {
+    "name": "my-awesome-project",
+    "current_branch": "main"
+  },
+  "summary": {
+    "total_commits": 247,
+    "total_authors": 12,
+    "total_branches": 8,
+    "total_files": 156,
+    "total_lines": 15432
+  },
+  "authors": [
+    {
+      "name": "John Doe",
+      "commits": 98,
+      "lines_added": 12543,
+      "lines_deleted": 3221
+    },
+    {
+      "name": "Jane Smith", 
+      "commits": 67,
+      "lines_added": 8765,
+      "lines_deleted": 2109
+    }
+  ],
+  "branches": [
+    {
+      "name": "main",
+      "commits": 247
+    },
+    {
+      "name": "feature/new-ui",
+      "commits": 23
+    }
+  ],
+  "file_types": [
+    {
+      "extension": "c",
+      "files": 45,
+      "lines": 8234
+    },
+    {
+      "extension": "h", 
+      "files": 23,
+      "lines": 2109
+    }
+  ]
+}
 ```
 
 ## Development
@@ -180,7 +240,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Roadmap
 
-- [ ] JSON/CSV export options
+- [x] JSON export options
+- [ ] CSV export options
 - [ ] Historical trend analysis
 - [ ] Git hook integration
 - [ ] Configuration file support

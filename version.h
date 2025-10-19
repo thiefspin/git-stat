@@ -17,9 +17,9 @@
 #define GIT_BRANCH "unknown"
 #endif
 
-// Feature flags (for future use)
+// Feature flags
 #define FEATURE_COLOR_OUTPUT 1
-#define FEATURE_JSON_EXPORT 0
+#define FEATURE_JSON_EXPORT 1
 #define FEATURE_CSV_EXPORT 0
 
 // Program metadata

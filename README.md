@@ -253,23 +253,51 @@ When using `--output json`, the utility outputs structured JSON data suitable fo
 
 ```
 git-stat/
-├── main.c                # Main source code
-├── version.h             # Version management system
-├── Makefile              # Build configuration with math library linking
-├── install.sh            # Automated installation script
-├── CODING_STANDARDS.md   # C best practices documentation
-├── README.md             # This file
-├── LICENSE               # MIT license
-└── .gitignore           # Git ignore rules
+├── src/                  # Source code directory
+│   ├── main.c           # Entry point and main program logic (127 lines)
+│   ├── git_stats.h      # Core data structures and API definitions
+│   ├── git_stats.c      # Basic statistics gathering (300 lines)
+│   ├── version.h        # Version management system
+│   ├── analysis/        # Analysis modules
+│   │   ├── hotspots.h   # Hotspot analysis interface
+│   │   ├── hotspots.c   # Hotspot detection implementation (111 lines)
+│   │   ├── activity.h   # Activity analysis interface
+│   │   └── activity.c   # Activity analysis implementation (141 lines)
+│   ├── output/          # Output formatting modules
+│   │   ├── formatters.h # Output formatting interfaces
+│   │   ├── human_output.c # Human-readable output (227 lines)
+│   │   └── json_output.c  # JSON output formatting (141 lines)
+│   └── utils/           # Utility functions
+│       ├── string_utils.h/.c  # String manipulation utilities
+│       └── git_commands.h/.c  # Git command execution utilities
+├── Makefile             # Enhanced build system for modular compilation
+├── install.sh           # Automated installation script
+├── CODING_STANDARDS.md  # C best practices documentation
+├── README.md           # This file
+├── LICENSE             # MIT license
+└── .gitignore          # Git ignore rules
 ```
 
 ### Contributing
 
+The modular architecture makes contributing much easier:
+
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+3. Choose the appropriate module for your changes:
+   - **Core functionality**: `src/git_stats.c`
+   - **New analysis types**: Add to `src/analysis/`
+   - **Output formats**: Modify `src/output/`
+   - **Utility functions**: Add to `src/utils/`
+4. Commit your changes (`git commit -m 'Add amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
+
+#### Module Guidelines
+- **Single Responsibility**: Each module should have one clear purpose
+- **Clean Interfaces**: Use header files to define clear APIs
+- **Error Handling**: Follow existing patterns for error reporting
+- **Documentation**: Document all public functions in headers
 
 ### Coding Standards
 
@@ -277,7 +305,10 @@ git-stat/
 - Use consistent indentation (4 spaces)
 - Include comments for complex logic
 - Test on multiple platforms
-- Keep functions focused and small
+- **Keep functions focused and small** (largest file now ~300 lines vs 1300+)
+- **Modular design**: Separate concerns into appropriate modules
+- **Clear interfaces**: Use header files to define module boundaries
+- **Consistent error handling**: Follow established patterns across modules
 
 ## Technical Details
 

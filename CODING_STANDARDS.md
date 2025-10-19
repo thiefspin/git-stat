@@ -13,6 +13,7 @@ This document outlines the C coding standards and best practices implemented in 
 7. [Security Considerations](#security-considerations)
 8. [Performance](#performance)
 9. [Standards Compliance](#standards-compliance)
+10. [Modular Architecture](#modular-architecture)
 
 ## Memory Management
 
@@ -502,3 +503,80 @@ This coding standard ensures our C code is:
 - **Interoperable**: Produces valid, parseable output formats
 - **Analytical**: Provides actionable insights for code quality improvement
 - **Temporal**: Handles time-based analysis with proper date arithmetic
+- **Modular**: Well-organized with clear separation of concerns
+
+## Modular Architecture
+
+### Project Organization
+- **Logical grouping** of related functionality into modules
+- **Clear directory structure** reflecting code organization
+- **Separation of concerns** with each module having a single responsibility
+
+```
+src/
+├── main.c              # Entry point - minimal, focused on program flow
+├── git_stats.h/.c      # Core data structures and basic operations
+├── analysis/           # Analysis algorithms (hotspots, activity)
+├── output/             # Formatting and display logic
+└── utils/              # Reusable utility functions
+```
+
+### Module Design Principles
+- **Single Responsibility**: Each module handles one aspect of functionality
+- **Clear Interfaces**: Header files define clean APIs between modules
+- **Minimal Dependencies**: Modules only depend on what they actually need
+- **Consistent Error Handling**: Standardized error reporting across modules
+
+```c
+/* Good: Clear module interface */
+int get_hotspot_stats(GitStats *stats);
+double calculate_hotspot_score(int commits, int lines_added, int lines_deleted);
+
+/* Good: Focused utility functions */
+void safe_string_copy(char* dest, const char* src, size_t dest_size);
+char* execute_git_command(const char* command);
+```
+
+### Header File Best Practices
+- **Include guards** to prevent multiple inclusion
+- **Forward declarations** to minimize dependencies
+- **Documentation** of all public functions and data structures
+- **Logical grouping** of related declarations
+
+```c
+#ifndef GIT_STATS_H
+#define GIT_STATS_H
+
+/* Core data structures */
+typedef struct { ... } GitStats;
+
+/* Public API functions */
+int get_basic_git_stats(GitStats *stats);
+void init_git_stats(GitStats *stats);
+
+#endif /* GIT_STATS_H */
+```
+
+### Build System Organization
+- **Modular compilation** with individual object files per module
+- **Proper dependency tracking** in Makefile rules
+- **Parallel build support** with correct dependency chains
+- **Clean separation** of build artifacts by module
+
+```makefile
+# Organized object file definitions
+OBJS = $(SRCDIR)/main.o \
+       $(SRCDIR)/git_stats.o \
+       $(ANALYSISDIR)/hotspots.o \
+       $(OUTPUTDIR)/human_output.o
+
+# Clear dependency relationships
+$(ANALYSISDIR)/hotspots.o: $(ANALYSISDIR)/hotspots.c $(SRCDIR)/git_stats.h
+```
+
+### Benefits of Modular Design
+- **Maintainability**: Easier to locate and fix bugs in specific modules
+- **Testability**: Individual modules can be unit tested in isolation
+- **Collaboration**: Multiple developers can work on different modules simultaneously
+- **Extensibility**: New features can be added as new modules without affecting existing code
+- **Reusability**: Utility modules can be reused across different parts of the application

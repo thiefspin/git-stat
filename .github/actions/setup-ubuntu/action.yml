@@ -1,0 +1,48 @@
+name: 'Setup Ubuntu Environment'
+description: 'Configure Ubuntu environment for non-interactive package installation'
+inputs:
+  packages:
+    description: 'Space-separated list of packages to install'
+    required: false
+    default: ''
+runs:
+  using: 'composite'
+  steps:
+    - name: Configure Ubuntu environment
+      shell: bash
+      run: |
+        echo "🔧 Configuring Ubuntu environment for CI..."
+
+        # Configure non-interactive mode
+        export DEBIAN_FRONTEND=noninteractive
+        echo "DEBIAN_FRONTEND=noninteractive" >> $GITHUB_ENV
+
+        # Configure apt to assume yes and avoid prompts
+        echo 'APT::Get::Assume-Yes "true";' | sudo tee /etc/apt/apt.conf.d/90assumeyes
+        echo 'APT::Get::Fix-Broken "true";' | sudo tee -a /etc/apt/apt.conf.d/90assumeyes
+        echo 'APT::Get::Force-Yes "false";' | sudo tee -a /etc/apt/apt.conf.d/90assumeyes
+        echo 'DPkg::Options "--force-confdef";' | sudo tee -a /etc/apt/apt.conf.d/90assumeyes
+        echo 'DPkg::Options "--force-confold";' | sudo tee -a /etc/apt/apt.conf.d/90assumeyes
+
+        # Disable needrestart prompts (this is what was causing the cancellation)
+        sudo mkdir -p /etc/needrestart/conf.d
+        echo '$nrconf{restart} = "a";' | sudo tee /etc/needrestart/conf.d/no-prompt.conf
+        echo '$nrconf{kernelhints} = 0;' | sudo tee -a /etc/needrestart/conf.d/no-prompt.conf
+
+        # Disable interactive services restart
+        echo 'Acquire::http::Dl-Limit "1000";' | sudo tee /etc/apt/apt.conf.d/99bandwidth
+        echo 'Acquire::https::Dl-Limit "1000";' | sudo tee -a /etc/apt/apt.conf.d/99bandwidth
+
+        # Update package lists
+        echo "📦 Updating package lists..."
+        sudo apt-get update -qq
+
+        echo "✅ Ubuntu environment configured successfully"
+
+    - name: Install packages
+      if: inputs.packages != ''
+      shell: bash
+      run: |
+        echo "📦 Installing packages: ${{ inputs.packages }}"
+        sudo apt-get install -y ${{ inputs.packages }}
+        echo "✅ Packages installed successfully"

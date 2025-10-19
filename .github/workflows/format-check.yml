@@ -15,10 +15,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install formatting tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-format indent
+      - name: Setup Ubuntu environment and install formatting tools
+        uses: ./.github/actions/setup-ubuntu
+        with:
+          packages: clang-format indent
 
       - name: Check indentation (spaces vs tabs)
         run: |
@@ -164,10 +164,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install clang-format
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-format
+      - name: Setup Ubuntu environment and install clang-format
+        uses: ./.github/actions/setup-ubuntu
+        with:
+          packages: clang-format
 
       - name: Create clang-format config
         run: |

@@ -1,8 +1,8 @@
-name: 'Dependency Review'
+name: "Dependency Review"
 
 on:
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 permissions:
   contents: read
@@ -12,10 +12,10 @@ jobs:
   dependency-review:
     runs-on: ubuntu-latest
     steps:
-      - name: 'Checkout Repository'
+      - name: "Checkout Repository"
         uses: actions/checkout@v4
 
-      - name: 'Dependency Review'
+      - name: "Dependency Review"
         uses: actions/dependency-review-action@v3
         with:
           fail-on-severity: moderate
@@ -27,12 +27,17 @@ jobs:
   system-dependencies:
     runs-on: ubuntu-latest
     steps:
-      - name: 'Checkout Repository'
+      - name: "Checkout Repository"
         uses: actions/checkout@v4
 
-      - name: 'Check build dependencies'
+      - name: "Check build dependencies"
         run: |
           echo "Checking system build dependencies for known issues..."
+
+          # Configure non-interactive mode and disable needrestart
+          export DEBIAN_FRONTEND=noninteractive
+          echo 'APT::Get::Assume-Yes "true";' | sudo tee /etc/apt/apt.conf.d/90assumeyes
+          echo '$nrconf{restart} = "a";' | sudo tee /etc/needrestart/conf.d/no-prompt.conf
 
           # Check if we're using any vulnerable versions of common tools
           echo "=== Build Tools Information ==="
@@ -87,10 +92,10 @@ jobs:
   dependency-check:
     runs-on: ubuntu-latest
     steps:
-      - name: 'Checkout Repository'
+      - name: "Checkout Repository"
         uses: actions/checkout@v4
 
-      - name: 'Verify minimal dependencies'
+      - name: "Verify minimal dependencies"
         run: |
           echo "=== Verifying C Project Dependencies ==="
 

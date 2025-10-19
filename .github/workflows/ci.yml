@@ -19,10 +19,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-tidy cppcheck
+      - name: Setup Ubuntu environment
+        uses: ./.github/actions/setup-ubuntu
+        with:
+          packages: clang-tidy cppcheck
 
       - name: Run clang-tidy
         run: |
@@ -65,11 +65,11 @@ jobs:
             echo "CC=clang" >> $GITHUB_ENV
           fi
 
-      - name: Install dependencies (Ubuntu)
+      - name: Setup Ubuntu environment
         if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential git
+        uses: ./.github/actions/setup-ubuntu
+        with:
+          packages: build-essential git
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
@@ -158,7 +158,34 @@ jobs:
       - name: Performance test
         run: |
           # Simple performance check - should complete within reasonable time
-          timeout 30s ./git-stat || (echo "Performance test failed - took too long" && exit 1)
+          echo "Running performance test..."
+
+          # Record start time
+          START_TIME=$(date +%s)
+
+          # Run git-stat and capture exit code
+          ./git-stat
+          EXIT_CODE=$?
+
+          # Record end time
+          END_TIME=$(date +%s)
+          DURATION=$((END_TIME - START_TIME))
+
+          echo "git-stat completed in ${DURATION} seconds"
+
+          # Check if it completed successfully
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "❌ Performance test failed - git-stat exited with code $EXIT_CODE"
+            exit $EXIT_CODE
+          fi
+
+          # Check if it took too long (30 seconds)
+          if [ $DURATION -gt 30 ]; then
+            echo "❌ Performance test failed - took ${DURATION} seconds (limit: 30)"
+            exit 1
+          fi
+
+          echo "✅ Performance test passed - completed in ${DURATION} seconds"
 
   # Windows build (separate job due to different requirements)
   build-windows:
@@ -191,6 +218,38 @@ jobs:
           ./git-stat.exe --help
           ./git-stat.exe
 
+      - name: Performance test (Windows)
+        shell: msys2 {0}
+        run: |
+          echo "Running performance test..."
+
+          # Record start time
+          START_TIME=$(date +%s)
+
+          # Run git-stat and capture exit code
+          ./git-stat.exe
+          EXIT_CODE=$?
+
+          # Record end time
+          END_TIME=$(date +%s)
+          DURATION=$((END_TIME - START_TIME))
+
+          echo "git-stat.exe completed in ${DURATION} seconds"
+
+          # Check if it completed successfully
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "❌ Performance test failed - git-stat.exe exited with code $EXIT_CODE"
+            exit $EXIT_CODE
+          fi
+
+          # Check if it took too long (30 seconds)
+          if [ $DURATION -gt 30 ]; then
+            echo "❌ Performance test failed - took ${DURATION} seconds (limit: 30)"
+            exit 1
+          fi
+
+          echo "✅ Performance test passed - completed in ${DURATION} seconds"
+
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
@@ -205,10 +264,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install security tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y valgrind clang
+      - name: Setup Ubuntu environment and install security tools
+        uses: ./.github/actions/setup-ubuntu
+        with:
+          packages: valgrind clang
 
       - name: Build with debug info and sanitizers
         run: |

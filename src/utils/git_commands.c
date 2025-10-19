@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "git_commands.h"
 #include "../git_stats.h"
 #include <stdio.h>

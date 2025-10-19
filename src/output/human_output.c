@@ -62,7 +62,7 @@ void print_stats_human(const GitStats *stats, AnalysisMode mode) {
         /* Create a copy for sorting */
         FileType temp_types[MAX_FILE_TYPES];
         memcpy(temp_types, stats->file_types, 
-               sizeof(FileType) * stats->file_type_count);
+               sizeof(FileType) * stats->file_type_count); // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
         
         /* Sort by count */
         qsort(temp_types, stats->file_type_count, sizeof(FileType), 

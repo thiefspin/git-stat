@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "activity.h"
 #include "../utils/string_utils.h"
 #include "../utils/git_commands.h"

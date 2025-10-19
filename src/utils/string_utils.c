@@ -12,7 +12,7 @@ void safe_string_copy(char* dest, const char* src, size_t dest_size) {
     assert(src != NULL);
     assert(dest_size > 0);
     
-    strncpy(dest, src, dest_size - 1);
+    strncpy(dest, src, dest_size - 1); // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
     dest[dest_size - 1] = '\0';
 }
 
@@ -54,7 +54,7 @@ int calculate_days_since_commit(const char* commit_date) {
     
     /* Parse YYYY-MM-DD format */
     int year, month, day;
-    if (sscanf(commit_date, "%d-%d-%d", &year, &month, &day) != 3) {
+    if (sscanf(commit_date, "%d-%d-%d", &year, &month, &day) != 3) { // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
         return 9999; /* Invalid date format */
     }
     

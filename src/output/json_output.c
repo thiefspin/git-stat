@@ -43,7 +43,7 @@ void print_stats_json(const GitStats *stats, AnalysisMode mode) {
     printf("  \"file_types\": [\n");
     if (stats->file_type_count > 0) {
         FileType temp_types[MAX_FILE_TYPES];
-        memcpy(temp_types, stats->file_types, sizeof(FileType) * stats->file_type_count);
+        memcpy(temp_types, stats->file_types, sizeof(FileType) * stats->file_type_count); // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
         qsort(temp_types, stats->file_type_count, sizeof(FileType), compare_file_types_by_count);
         
         int types_to_show = (stats->file_type_count < MAX_FILE_TYPES_DISPLAY) ? 

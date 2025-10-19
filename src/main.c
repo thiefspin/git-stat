@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "git_stats.h"
 #include "analysis/hotspots.h"
 #include "analysis/activity.h"

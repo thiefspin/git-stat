@@ -45,7 +45,8 @@ typedef enum {
 /* Analysis modes */
 typedef enum {
     ANALYSIS_BASIC,
-    ANALYSIS_HOTSPOTS
+    ANALYSIS_HOTSPOTS,
+    ANALYSIS_ACTIVITY
 } AnalysisMode;
 
 /**
@@ -57,6 +58,21 @@ typedef struct {
     int lines_added;
     int lines_deleted;
 } Author;
+
+/**
+ * Author activity structure for temporal analysis
+ */
+typedef struct {
+    char name[MAX_NAME_LENGTH];
+    int commit_count;
+    int lines_added;
+    int lines_deleted;
+    char first_commit_date[32];
+    char last_commit_date[32];
+    int days_since_last_commit;
+    int is_active;  /* 1 if active (committed within last 90 days), 0 otherwise */
+    double activity_score;
+} AuthorActivity;
 
 /**
  * Branch information structure
@@ -104,6 +120,8 @@ typedef struct {
     int file_type_count;
     FileHotspot hotspots[MAX_FILES];
     int hotspot_count;
+    AuthorActivity activities[MAX_AUTHORS];
+    int activity_count;
 } GitStats;
 
 /* Function prototypes */
@@ -115,10 +133,13 @@ static int get_author_stats(GitStats *stats);
 static int get_branch_stats(GitStats *stats);
 static int get_file_stats(GitStats *stats);
 static int get_hotspot_stats(GitStats *stats);
+static int get_activity_stats(GitStats *stats);
 static void print_stats(const GitStats *stats, AnalysisMode mode);
 static void print_stats_json(const GitStats *stats, AnalysisMode mode);
 static void print_hotspots(const GitStats *stats);
 static void print_hotspots_json(const GitStats *stats);
+static void print_activity(const GitStats *stats);
+static void print_activity_json(const GitStats *stats);
 static void print_help(void);
 static int parse_arguments(int argc, char *argv[], OutputFormat *format, AnalysisMode *mode);
 static char* execute_git_command(const char* command);
@@ -128,8 +149,11 @@ static void safe_string_copy(char* dest, const char* src, size_t dest_size);
 static void remove_trailing_newline(char* str);
 static int compare_file_types_by_count(const void* a, const void* b);
 static int compare_hotspots_by_score(const void* a, const void* b);
+static int compare_activities_by_score(const void* a, const void* b);
 static void init_git_stats(GitStats *stats);
 static double calculate_hotspot_score(int commits, int lines_added, int lines_deleted);
+static double calculate_activity_score(int commits, int days_since_last, int lines_changed);
+static int calculate_days_since_commit(const char* commit_date);
 
 /**
  * Main entry point
@@ -228,6 +252,13 @@ static int get_git_stats(GitStats *stats, AnalysisMode mode) {
     if (mode == ANALYSIS_HOTSPOTS) {
         if (get_hotspot_stats(stats) != 0) {
             fprintf(stderr, "Warning: Failed to get hotspot statistics\n");
+        }
+    }
+    
+    /* Gather activity data if requested */
+    if (mode == ANALYSIS_ACTIVITY) {
+        if (get_activity_stats(stats) != 0) {
+            fprintf(stderr, "Warning: Failed to get activity statistics\n");
         }
     }
     
@@ -544,6 +575,110 @@ static int get_hotspot_stats(GitStats *stats) {
 }
 
 /**
+ * Get author activity statistics over time
+ */
+static int get_activity_stats(GitStats *stats) {
+    assert(stats != NULL);
+    
+    FILE *fp = popen("git log --pretty=format:'%an|%ad|%s' --date=short --all 2>/dev/null", "r");
+    if (fp == NULL) {
+        return -1;
+    }
+    
+    char line[MAX_LINE_LENGTH];
+    stats->activity_count = 0;
+    
+    /* Parse commit log for author activity */
+    while (fgets(line, sizeof(line), fp) != NULL) {
+        remove_trailing_newline(line);
+        
+        /* Parse format: author|date|subject */
+        char *author = strtok(line, "|");
+        char *date = strtok(NULL, "|");
+        
+        if (author == NULL || date == NULL) continue;
+        
+        /* Find or create activity entry */
+        int found = 0;
+        for (int i = 0; i < stats->activity_count; i++) {
+            if (strcmp(stats->activities[i].name, author) == 0) {
+                stats->activities[i].commit_count++;
+                
+                /* Update first commit date (earliest) */
+                if (strlen(stats->activities[i].first_commit_date) == 0 ||
+                    strcmp(date, stats->activities[i].first_commit_date) < 0) {
+                    safe_string_copy(stats->activities[i].first_commit_date, date,
+                                   sizeof(stats->activities[i].first_commit_date));
+                }
+                
+                /* Update last commit date (latest) */
+                if (strlen(stats->activities[i].last_commit_date) == 0 ||
+                    strcmp(date, stats->activities[i].last_commit_date) > 0) {
+                    safe_string_copy(stats->activities[i].last_commit_date, date,
+                                   sizeof(stats->activities[i].last_commit_date));
+                }
+                
+                found = 1;
+                break;
+            }
+        }
+        
+        if (!found && stats->activity_count < MAX_AUTHORS) {
+            safe_string_copy(stats->activities[stats->activity_count].name, author,
+                           sizeof(stats->activities[stats->activity_count].name));
+            stats->activities[stats->activity_count].commit_count = 1;
+            safe_string_copy(stats->activities[stats->activity_count].first_commit_date, date,
+                           sizeof(stats->activities[stats->activity_count].first_commit_date));
+            safe_string_copy(stats->activities[stats->activity_count].last_commit_date, date,
+                           sizeof(stats->activities[stats->activity_count].last_commit_date));
+            stats->activities[stats->activity_count].lines_added = 0;
+            stats->activities[stats->activity_count].lines_deleted = 0;
+            stats->activity_count++;
+        }
+    }
+    pclose(fp);
+    
+    /* Get line change statistics and calculate activity metrics */
+    for (int i = 0; i < stats->activity_count; i++) {
+        /* Get line statistics for this author */
+        char command[MAX_COMMAND_LENGTH];
+        int ret = snprintf(command, sizeof(command),
+                "git log --author=\"%s\" --pretty=tformat: --numstat 2>/dev/null | "
+                "awk '{add+=$1; del+=$2} END {print add\" \"del}'",
+                stats->activities[i].name);
+        
+        if (ret > 0 && ret < (int)sizeof(command)) {
+            char *result = execute_git_command(command);
+            if (result != NULL) {
+                sscanf(result, "%d %d", &stats->activities[i].lines_added,
+                       &stats->activities[i].lines_deleted);
+                free(result);
+            }
+        }
+        
+        /* Calculate days since last commit */
+        stats->activities[i].days_since_last_commit = 
+            calculate_days_since_commit(stats->activities[i].last_commit_date);
+        
+        /* Determine if author is active (committed within last 90 days) */
+        stats->activities[i].is_active = (stats->activities[i].days_since_last_commit <= 90) ? 1 : 0;
+        
+        /* Calculate activity score */
+        stats->activities[i].activity_score = calculate_activity_score(
+            stats->activities[i].commit_count,
+            stats->activities[i].days_since_last_commit,
+            stats->activities[i].lines_added + stats->activities[i].lines_deleted
+        );
+    }
+    
+    /* Sort activities by score */
+    qsort(stats->activities, stats->activity_count, sizeof(AuthorActivity),
+          compare_activities_by_score);
+    
+    return 0;
+}
+
+/**
  * Execute a git command and return its output
  * Caller is responsible for freeing the returned string
  */
@@ -736,6 +871,11 @@ static void print_stats(const GitStats *stats, AnalysisMode mode) {
     if (mode == ANALYSIS_HOTSPOTS) {
         print_hotspots(stats);
     }
+    
+    /* Print activity analysis if requested */
+    if (mode == ANALYSIS_ACTIVITY) {
+        print_activity(stats);
+    }
 }
 
 /**
@@ -770,6 +910,63 @@ static void print_hotspots(const GitStats *stats) {
     printf("\n");
     printf("  📊 Hotspot Score = commits × √(lines_added + lines_deleted + 1)\n");
     printf("  💡 High scores indicate files that change frequently with significant modifications\n");
+    printf("\n");
+}
+
+/**
+ * Print author activity analysis
+ */
+static void print_activity(const GitStats *stats) {
+    assert(stats != NULL);
+    
+    printf("📈 Author Activity Analysis:\n");
+    
+    if (stats->activity_count == 0) {
+        printf("  No activity data found.\n\n");
+        return;
+    }
+    
+    /* Count active vs inactive contributors */
+    int active_count = 0;
+    int single_commit_count = 0;
+    
+    for (int i = 0; i < stats->activity_count; i++) {
+        if (stats->activities[i].is_active) active_count++;
+        if (stats->activities[i].commit_count == 1) single_commit_count++;
+    }
+    
+    printf("  📊 Summary: %d total contributors, %d active (< 90 days), %d single-commit\n\n",
+           stats->activity_count, active_count, single_commit_count);
+    
+    /* Show top contributors by activity score */
+    printf("  🏆 Top Contributors by Activity:\n");
+    int contributors_to_show = (stats->activity_count < 10) ? stats->activity_count : 10;
+    
+    for (int i = 0; i < contributors_to_show; i++) {
+        const char* status = stats->activities[i].is_active ? "ACTIVE" : "INACTIVE";
+        printf("  %2d. %-25s %3d commits, last: %s (%d days ago) [%s]\n",
+               i + 1,
+               stats->activities[i].name,
+               stats->activities[i].commit_count,
+               stats->activities[i].last_commit_date,
+               stats->activities[i].days_since_last_commit,
+               status);
+    }
+    
+    printf("\n  📅 Activity Details:\n");
+    for (int i = 0; i < contributors_to_show; i++) {
+        printf("      %s: %s → %s (%d commits, +%d/-%d lines, score: %.1f)\n",
+               stats->activities[i].name,
+               stats->activities[i].first_commit_date,
+               stats->activities[i].last_commit_date,
+               stats->activities[i].commit_count,
+               stats->activities[i].lines_added,
+               stats->activities[i].lines_deleted,
+               stats->activities[i].activity_score);
+    }
+    
+    printf("\n  💡 Activity Score = commits × (10000 / (days_since_last + 1)) × log(lines + 1)\n");
+    printf("  ✨ Higher scores indicate recent, frequent, and substantial contributors\n");
     printf("\n");
 }
 
@@ -851,6 +1048,9 @@ static void print_stats_json(const GitStats *stats, AnalysisMode mode) {
     if (mode == ANALYSIS_HOTSPOTS) {
         printf(",\n");
         print_hotspots_json(stats);
+    } else if (mode == ANALYSIS_ACTIVITY) {
+        printf(",\n");
+        print_activity_json(stats);
     } else {
         printf("\n");
     }
@@ -877,6 +1077,51 @@ static void print_hotspots_json(const GitStats *stats) {
             printf("      \"lines_deleted\": %d,\n", stats->hotspots[i].lines_deleted);
             printf("      \"hotspot_score\": %.1f\n", stats->hotspots[i].hotspot_score);
             printf("    }%s\n", (i < hotspots_to_show - 1) ? "," : "");
+        }
+    }
+    
+    printf("  ]");
+}
+
+/**
+ * Print activity analysis in JSON format
+ */
+static void print_activity_json(const GitStats *stats) {
+    assert(stats != NULL);
+    
+    printf("  \"activity_summary\": {\n");
+    
+    /* Calculate summary statistics */
+    int active_count = 0;
+    int single_commit_count = 0;
+    
+    for (int i = 0; i < stats->activity_count; i++) {
+        if (stats->activities[i].is_active) active_count++;
+        if (stats->activities[i].commit_count == 1) single_commit_count++;
+    }
+    
+    printf("    \"total_contributors\": %d,\n", stats->activity_count);
+    printf("    \"active_contributors\": %d,\n", active_count);
+    printf("    \"single_commit_contributors\": %d\n", single_commit_count);
+    printf("  },\n");
+    
+    printf("  \"author_activity\": [\n");
+    
+    if (stats->activity_count > 0) {
+        int contributors_to_show = (stats->activity_count < 15) ? stats->activity_count : 15;
+        
+        for (int i = 0; i < contributors_to_show; i++) {
+            printf("    {\n");
+            printf("      \"name\": \"%s\",\n", stats->activities[i].name);
+            printf("      \"commits\": %d,\n", stats->activities[i].commit_count);
+            printf("      \"lines_added\": %d,\n", stats->activities[i].lines_added);
+            printf("      \"lines_deleted\": %d,\n", stats->activities[i].lines_deleted);
+            printf("      \"first_commit_date\": \"%s\",\n", stats->activities[i].first_commit_date);
+            printf("      \"last_commit_date\": \"%s\",\n", stats->activities[i].last_commit_date);
+            printf("      \"days_since_last_commit\": %d,\n", stats->activities[i].days_since_last_commit);
+            printf("      \"is_active\": %s,\n", stats->activities[i].is_active ? "true" : "false");
+            printf("      \"activity_score\": %.1f\n", stats->activities[i].activity_score);
+            printf("    }%s\n", (i < contributors_to_show - 1) ? "," : "");
         }
     }
     
@@ -921,6 +1166,8 @@ static int parse_arguments(int argc, char *argv[], OutputFormat *format, Analysi
             }
         } else if (strcmp(argv[i], "--hotspots") == 0) {
             *mode = ANALYSIS_HOTSPOTS;
+        } else if (strcmp(argv[i], "--activity") == 0) {
+            *mode = ANALYSIS_ACTIVITY;
         } else {
             /* Unknown argument */
             fprintf(stderr, "Error: Unknown argument '%s'\n", argv[i]);
@@ -945,19 +1192,23 @@ static void print_help(void) {
     printf("  -v, --version       Show version information\n");
     printf("  --output FORMAT     Output format (default: human-readable)\n");
     printf("                      Supported formats: json\n");
-    printf("  --hotspots          Analyze and display file hotspots (high churn)\n\n");
+    printf("  --hotspots          Analyze and display file hotspots (high churn)\n");
+    printf("  --activity          Analyze author activity over time\n\n");
     printf("Features:\n");
     printf("  • Repository overview (commits, authors, branches, files)\n");
     printf("  • Top contributors with commit counts and line changes\n");
     printf("  • Branch information and commit counts\n");
     printf("  • File type analysis with line counts and percentages\n");
     printf("  • Hotspot detection for identifying high-churn files\n");
+    printf("  • Author activity analysis over time\n");
     printf("  • Works completely offline with local git data\n\n");
     printf("Examples:\n");
     printf("  git-stat                    # Analyze current repository\n");
     printf("  git-stat --hotspots         # Include hotspot analysis\n");
+    printf("  git-stat --activity         # Include author activity analysis\n");
     printf("  git-stat --output json      # Output in JSON format\n");
     printf("  git-stat --hotspots --output json  # Hotspots in JSON format\n");
+    printf("  git-stat --activity --output json  # Activity analysis in JSON format\n");
     printf("  git-stat --help             # Show this help\n");
     printf("  git-stat --version          # Show version info\n\n");
     printf("Exit Codes:\n");
@@ -993,4 +1244,69 @@ static double calculate_hotspot_score(int commits, int lines_added, int lines_de
     /* Score = commits × √(total_lines + 1) */
     /* The +1 prevents sqrt(0) and gives small weight to files with commits but no line data */
     return (double)commits * sqrt((double)(total_lines + 1));
+}
+
+/**
+ * Comparison function for sorting activities by score
+ */
+static int compare_activities_by_score(const void* a, const void* b) {
+    const AuthorActivity* activity_a = (const AuthorActivity*)a;
+    const AuthorActivity* activity_b = (const AuthorActivity*)b;
+    
+    /* Sort in descending order by activity score */
+    if (activity_a->activity_score < activity_b->activity_score) return 1;
+    if (activity_a->activity_score > activity_b->activity_score) return -1;
+    return 0;
+}
+
+/**
+ * Calculate activity score based on commits, recency, and line changes
+ */
+static double calculate_activity_score(int commits, int days_since_last, int lines_changed) {
+    if (commits <= 0) return 0.0;
+    
+    /* Recency factor: more recent activity gets higher weight */
+    double recency_factor = 10000.0 / (double)(days_since_last + 1);
+    
+    /* Line change factor: log scale to prevent huge commits from dominating */
+    double lines_factor = log((double)(lines_changed + 1));
+    
+    /* Score = commits × recency_factor × lines_factor */
+    return (double)commits * recency_factor * lines_factor;
+}
+
+/**
+ * Calculate days since commit date (approximate)
+ */
+static int calculate_days_since_commit(const char* commit_date) {
+    if (commit_date == NULL || strlen(commit_date) == 0) {
+        return 9999; /* Very old if no date available */
+    }
+    
+    /* Parse YYYY-MM-DD format */
+    int year, month, day;
+    if (sscanf(commit_date, "%d-%d-%d", &year, &month, &day) != 3) {
+        return 9999; /* Invalid date format */
+    }
+    
+    /* Get current time */
+    time_t now;
+    time(&now);
+    
+    /* Create tm structure for commit date */
+    struct tm commit_tm = {0};
+    commit_tm.tm_year = year - 1900;
+    commit_tm.tm_mon = month - 1;
+    commit_tm.tm_mday = day;
+    
+    /* Calculate difference in seconds and convert to days */
+    time_t commit_time = mktime(&commit_tm);
+    if (commit_time == -1) {
+        return 9999; /* Invalid date */
+    }
+    
+    double diff_seconds = difftime(now, commit_time);
+    int days = (int)(diff_seconds / (24 * 60 * 60));
+    
+    return (days < 0) ? 0 : days;
 }

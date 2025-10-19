@@ -427,6 +427,72 @@ snprintf(command, sizeof(command),
 - **High commits** + **high line changes** = Potential design issues
 - **Consider context** - configuration files vs. core logic files
 
+## Author Activity Analysis Implementation
+
+### Temporal Data Collection
+- **Efficient git log parsing** with specific format strings for date extraction
+- **Robust date handling** using standard C time functions
+- **Activity scoring algorithms** that balance recency, frequency, and impact
+
+```c
+/* Use git log with date format for temporal analysis */
+fp = popen("git log --pretty=format:'%an|%ad|%s' --date=short --all 2>/dev/null", "r");
+
+/* Parse author|date|subject format safely */
+char *author = strtok(line, "|");
+char *date = strtok(NULL, "|");
+```
+
+### Activity Scoring Formula
+- **Multi-factor scoring** combining commits, recency, and line changes
+- **Logarithmic scaling** for line changes to prevent outliers from dominating
+- **Recency weighting** with exponential decay for older activity
+
+```c
+/**
+ * Calculate activity score: commits × (10000 / (days_since_last + 1)) × log(lines + 1)
+ * This balances frequency, recency, and impact
+ */
+static double calculate_activity_score(int commits, int days_since_last, int lines_changed) {
+    if (commits <= 0) return 0.0;
+    
+    double recency_factor = 10000.0 / (double)(days_since_last + 1);
+    double lines_factor = log((double)(lines_changed + 1));
+    
+    return (double)commits * recency_factor * lines_factor;
+}
+```
+
+### Date Calculation Best Practices
+- **Safe date parsing** with error handling for invalid formats
+- **Cross-platform time handling** using standard C library functions
+- **Reasonable fallbacks** for missing or malformed dates
+
+```c
+/* Parse YYYY-MM-DD format with validation */
+int year, month, day;
+if (sscanf(commit_date, "%d-%d-%d", &year, &month, &day) != 3) {
+    return 9999; /* Invalid date format */
+}
+
+/* Use mktime for proper date arithmetic */
+time_t commit_time = mktime(&commit_tm);
+if (commit_time == -1) {
+    return 9999; /* Invalid date */
+}
+```
+
+### Activity Classification
+- **Clear thresholds** for active vs inactive contributors (90 days)
+- **Statistical summaries** for team health metrics
+- **Meaningful categorization** (single-commit vs regular contributors)
+
+### Performance Considerations
+- **Batch processing** of git log output to minimize subprocess overhead
+- **Efficient sorting** using standard library qsort
+- **Memory-conscious** data structures with fixed limits
+- **Optional analysis** to maintain fast default performance
+
 This coding standard ensures our C code is:
 - **Safe**: Protected against buffer overflows and memory leaks
 - **Reliable**: Proper error handling and resource management
@@ -435,3 +501,4 @@ This coding standard ensures our C code is:
 - **Secure**: Protected against common vulnerabilities
 - **Interoperable**: Produces valid, parseable output formats
 - **Analytical**: Provides actionable insights for code quality improvement
+- **Temporal**: Handles time-based analysis with proper date arithmetic

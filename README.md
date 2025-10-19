@@ -13,6 +13,7 @@ A lightweight, fast C utility that provides comprehensive statistics for git rep
 - 🌿 **Branch Information**: Local branches with commit statistics
 - 📁 **File Type Analysis**: Breakdown by file extensions with line counts and percentages
 - 🔥 **Hotspot Detection**: Identify files with high churn (frequent changes + significant modifications)
+- 📈 **Author Activity Analysis**: Track contributor activity over time, identify active vs inactive contributors
 - ⚡ **Fast & Lightweight**: Pure C implementation with minimal dependencies
 - 🔒 **Offline Operation**: Works entirely with local git data, no network required
 - 🎯 **Cross-Platform**: Supports Linux, macOS, and Windows
@@ -64,8 +65,10 @@ git-stat
 ```bash
 git-stat                         # Analyze current repository (human-readable output)
 git-stat --hotspots              # Include hotspot analysis (high-churn files)
+git-stat --activity              # Include author activity analysis over time
 git-stat --output json           # Output in JSON format
 git-stat --hotspots --output json # Hotspots analysis in JSON format
+git-stat --activity --output json # Activity analysis in JSON format
 git-stat --help                  # Show help information
 git-stat -h                      # Show help information
 ```
@@ -122,6 +125,23 @@ Repository Statistics for: my-awesome-project
 
   📊 Hotspot Score = commits × √(lines_added + lines_deleted + 1)
   💡 High scores indicate files that change frequently with significant modifications
+
+📈 Author Activity Analysis:
+  📊 Summary: 12 total contributors, 5 active (< 90 days), 3 single-commit
+
+  🏆 Top Contributors by Activity:
+   1. John Doe                    98 commits, last: 2024-01-15 (5 days ago) [ACTIVE]
+   2. Jane Smith                  67 commits, last: 2024-01-10 (10 days ago) [ACTIVE]
+   3. Bob Johnson                 45 commits, last: 2023-11-20 (65 days ago) [ACTIVE]
+   4. Alice Williams              23 commits, last: 2023-08-15 (160 days ago) [INACTIVE]
+   5. Charlie Brown               14 commits, last: 2023-06-01 (235 days ago) [INACTIVE]
+
+  📅 Activity Details:
+      John Doe: 2023-03-15 → 2024-01-15 (98 commits, +12,543/-3,221 lines, score: 85,432.1)
+      Jane Smith: 2023-05-20 → 2024-01-10 (67 commits, +8,765/-2,109 lines, score: 67,890.4)
+
+  💡 Activity Score = commits × (10000 / (days_since_last + 1)) × log(lines + 1)
+  ✨ Higher scores indicate recent, frequent, and substantial contributors
 ```
 
 #### JSON Format
@@ -193,6 +213,35 @@ When using `--output json`, the utility outputs structured JSON data suitable fo
       "lines_added": 1867,
       "lines_deleted": 943,
       "hotspot_score": 301.4
+    }
+  ],
+  "activity_summary": {
+    "total_contributors": 12,
+    "active_contributors": 5,
+    "single_commit_contributors": 3
+  },
+  "author_activity": [
+    {
+      "name": "John Doe",
+      "commits": 98,
+      "lines_added": 12543,
+      "lines_deleted": 3221,
+      "first_commit_date": "2023-03-15",
+      "last_commit_date": "2024-01-15",
+      "days_since_last_commit": 5,
+      "is_active": true,
+      "activity_score": 85432.1
+    },
+    {
+      "name": "Jane Smith",
+      "commits": 67,
+      "lines_added": 8765,
+      "lines_deleted": 2109,
+      "first_commit_date": "2023-05-20",
+      "last_commit_date": "2024-01-10",
+      "days_since_last_commit": 10,
+      "is_active": true,
+      "activity_score": 67890.4
     }
   ]
 }
@@ -278,13 +327,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [x] JSON export options
 - [x] Hotspot detection for high-churn files
+- [x] Author activity analysis over time
 - [ ] CSV export options
-- [ ] Historical trend analysis (time-based hotspot analysis)
+- [ ] Historical trend analysis (time-based charts)
 - [ ] Git hook integration
 - [ ] Configuration file support
 - [ ] Custom report templates
 - [ ] Language-specific statistics
-- [ ] Hotspot thresholds and filtering options
+- [ ] Hotspot and activity thresholds and filtering options
+- [ ] Team collaboration metrics
 
 ## Support
 

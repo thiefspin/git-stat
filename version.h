@@ -17,15 +17,10 @@
 #define GIT_BRANCH "unknown"
 #endif
 
-// Feature flags
+// Feature flags (for future use)
 #define FEATURE_COLOR_OUTPUT 1
 #define FEATURE_JSON_EXPORT 0
 #define FEATURE_CSV_EXPORT 0
-
-// Limits and configuration
-#define MAX_AUTHORS_DISPLAY 10
-#define MAX_BRANCHES_DISPLAY 10
-#define MAX_FILE_TYPES_DISPLAY 10
 
 // Program metadata
 #define PROGRAM_NAME "Git Statistics Utility"
@@ -41,7 +36,12 @@
 #define CURRENT_VERSION_CODE \
     VERSION_CODE(VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH)
 
-// Function to get full version string
+/* Inline functions for version information */
+
+/**
+ * Get full version string with build information
+ * @return Formatted version string
+ */
 static inline const char* get_version_string(void) {
     static char version_buffer[256];
     snprintf(version_buffer, sizeof(version_buffer),
@@ -50,12 +50,18 @@ static inline const char* get_version_string(void) {
     return version_buffer;
 }
 
-// Function to get short version string
+/**
+ * Get short version string
+ * @return Version string only
+ */
 static inline const char* get_short_version(void) {
     return VERSION_STRING;
 }
 
-// Function to check if version is development
+/**
+ * Check if this is a development version
+ * @return 1 if development version, 0 otherwise
+ */
 static inline int is_development_version(void) {
     return (VERSION_PATCH == 0 && strcmp(GIT_COMMIT, "unknown") != 0);
 }

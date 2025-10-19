@@ -608,9 +608,11 @@ static void print_stats(const GitStats *stats) {
                            stats->file_type_count : MAX_FILE_TYPES_DISPLAY;
         
         for (int i = 0; i < types_to_show; i++) {
-            printf("  %-10s %4d files, %8ld lines\n", 
+            double percentage = (stats->total_lines > 0) ? 
+                               (double)temp_types[i].total_lines * 100.0 / stats->total_lines : 0.0;
+            printf("  %-10s %4d files, %8ld lines (%5.1f%%)\n", 
                    temp_types[i].extension, temp_types[i].count, 
-                   temp_types[i].total_lines);
+                   temp_types[i].total_lines, percentage);
         }
         
         if (stats->file_type_count > MAX_FILE_TYPES_DISPLAY) {
@@ -683,10 +685,13 @@ static void print_stats_json(const GitStats *stats) {
                            stats->file_type_count : MAX_FILE_TYPES_DISPLAY;
         
         for (int i = 0; i < types_to_show; i++) {
+            double percentage = (stats->total_lines > 0) ? 
+                               (double)temp_types[i].total_lines * 100.0 / stats->total_lines : 0.0;
             printf("    {\n");
             printf("      \"extension\": \"%s\",\n", temp_types[i].extension);
             printf("      \"files\": %d,\n", temp_types[i].count);
-            printf("      \"lines\": %ld\n", temp_types[i].total_lines);
+            printf("      \"lines\": %ld,\n", temp_types[i].total_lines);
+            printf("      \"percentage\": %.1f\n", percentage);
             printf("    }%s\n", (i < types_to_show - 1) ? "," : "");
         }
     }

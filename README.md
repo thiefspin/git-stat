@@ -11,7 +11,7 @@ A lightweight, fast C utility that provides comprehensive statistics for git rep
 - 📊 **Repository Overview**: Total commits, authors, branches, and files
 - 👥 **Contributor Analysis**: Top contributors with commit counts and line changes
 - 🌿 **Branch Information**: Local branches with commit statistics
-- 📁 **File Type Analysis**: Breakdown by file extensions with line counts
+- 📁 **File Type Analysis**: Breakdown by file extensions with line counts and percentages
 - ⚡ **Fast & Lightweight**: Pure C implementation with minimal dependencies
 - 🔒 **Offline Operation**: Works entirely with local git data, no network required
 - 🎯 **Cross-Platform**: Supports Linux, macOS, and Windows
@@ -104,11 +104,11 @@ Repository Statistics for: my-awesome-project
   hotfix/security           5 commits
 
 📁 File Types:
-  c            45 files,     8,234 lines
-  h            23 files,     2,109 lines
-  md            8 files,       876 lines
-  txt           12 files       543 lines
-  json          5 files        234 lines
+  c            45 files,     8,234 lines ( 67.2%)
+  h            23 files,     2,109 lines ( 17.2%)
+  md            8 files,       876 lines (  7.1%)
+  txt           12 files       543 lines (  4.4%)
+  json          5 files        234 lines (  1.9%)
 ```
 
 #### JSON Format
@@ -156,12 +156,14 @@ When using `--output json`, the utility outputs structured JSON data suitable fo
     {
       "extension": "c",
       "files": 45,
-      "lines": 8234
+      "lines": 8234,
+      "percentage": 67.2
     },
     {
       "extension": "h", 
       "files": 23,
-      "lines": 2109
+      "lines": 2109,
+      "percentage": 17.2
     }
   ]
 }

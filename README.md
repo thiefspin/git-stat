@@ -12,6 +12,7 @@ A lightweight, fast C utility that provides comprehensive statistics for git rep
 - 👥 **Contributor Analysis**: Top contributors with commit counts and line changes
 - 🌿 **Branch Information**: Local branches with commit statistics
 - 📁 **File Type Analysis**: Breakdown by file extensions with line counts and percentages
+- 🔥 **Hotspot Detection**: Identify files with high churn (frequent changes + significant modifications)
 - ⚡ **Fast & Lightweight**: Pure C implementation with minimal dependencies
 - 🔒 **Offline Operation**: Works entirely with local git data, no network required
 - 🎯 **Cross-Platform**: Supports Linux, macOS, and Windows
@@ -61,10 +62,12 @@ git-stat
 ### Command Line Options
 
 ```bash
-git-stat                    # Analyze current repository (human-readable output)
-git-stat --output json      # Output in JSON format
-git-stat --help             # Show help information
-git-stat -h                 # Show help information
+git-stat                         # Analyze current repository (human-readable output)
+git-stat --hotspots              # Include hotspot analysis (high-churn files)
+git-stat --output json           # Output in JSON format
+git-stat --hotspots --output json # Hotspots analysis in JSON format
+git-stat --help                  # Show help information
+git-stat -h                      # Show help information
 ```
 
 ### Example Output
@@ -109,6 +112,16 @@ Repository Statistics for: my-awesome-project
   md            8 files,       876 lines (  7.1%)
   txt           12 files       543 lines (  4.4%)
   json          5 files        234 lines (  1.9%)
+
+🔥 Hotspot Analysis (Files with High Churn):
+   1. src/core/engine.c                         23 commits, +2,341/-1,123 lines (score: 543.2)
+   2. src/api/handlers.c                        18 commits, +1,867/-943 lines (score: 301.4)
+   3. config/settings.json                      15 commits, +234/-187 lines (score: 95.8)
+   4. README.md                                 12 commits, +445/-67 lines (score: 86.2)
+   5. src/utils/helpers.c                       9 commits, +678/-234 lines (score: 85.7)
+
+  📊 Hotspot Score = commits × √(lines_added + lines_deleted + 1)
+  💡 High scores indicate files that change frequently with significant modifications
 ```
 
 #### JSON Format
@@ -165,6 +178,22 @@ When using `--output json`, the utility outputs structured JSON data suitable fo
       "lines": 2109,
       "percentage": 17.2
     }
+  ],
+  "hotspots": [
+    {
+      "filename": "src/core/engine.c",
+      "commits": 23,
+      "lines_added": 2341,
+      "lines_deleted": 1123,
+      "hotspot_score": 543.2
+    },
+    {
+      "filename": "src/api/handlers.c",
+      "commits": 18,
+      "lines_added": 1867,
+      "lines_deleted": 943,
+      "hotspot_score": 301.4
+    }
   ]
 }
 ```
@@ -175,10 +204,14 @@ When using `--output json`, the utility outputs structured JSON data suitable fo
 
 ```
 git-stat/
-├── main.c          # Main source code
-├── Makefile        # Build configuration
-├── README.md       # This file
-└── LICENSE         # MIT license
+├── main.c                # Main source code
+├── version.h             # Version management system
+├── Makefile              # Build configuration with math library linking
+├── install.sh            # Automated installation script
+├── CODING_STANDARDS.md   # C best practices documentation
+├── README.md             # This file
+├── LICENSE               # MIT license
+└── .gitignore           # Git ignore rules
 ```
 
 ### Contributing
@@ -202,6 +235,7 @@ git-stat/
 ### Dependencies
 
 - Standard C library
+- Math library (libm) for hotspot score calculations
 - POSIX system calls (for file operations)
 - Git command-line interface
 
@@ -243,12 +277,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Roadmap
 
 - [x] JSON export options
+- [x] Hotspot detection for high-churn files
 - [ ] CSV export options
-- [ ] Historical trend analysis
+- [ ] Historical trend analysis (time-based hotspot analysis)
 - [ ] Git hook integration
 - [ ] Configuration file support
 - [ ] Custom report templates
 - [ ] Language-specific statistics
+- [ ] Hotspot thresholds and filtering options
 
 ## Support
 

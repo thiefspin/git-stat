@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <assert.h>
+#include <math.h>
 #include "version.h"
 
 /* Buffer size constants */
@@ -21,6 +22,7 @@
 #define MAX_AUTHORS 100
 #define MAX_BRANCHES 50
 #define MAX_FILE_TYPES 50
+#define MAX_FILES 1000
 
 /* Display limits */
 #define MAX_AUTHORS_DISPLAY 10
@@ -39,6 +41,12 @@ typedef enum {
     OUTPUT_DEFAULT,
     OUTPUT_JSON
 } OutputFormat;
+
+/* Analysis modes */
+typedef enum {
+    ANALYSIS_BASIC,
+    ANALYSIS_HOTSPOTS
+} AnalysisMode;
 
 /**
  * Author statistics structure
@@ -69,6 +77,17 @@ typedef struct {
 } FileType;
 
 /**
+ * File hotspot structure for churn analysis
+ */
+typedef struct {
+    char filename[MAX_PATH_LENGTH];
+    int commit_count;
+    int lines_added;
+    int lines_deleted;
+    double hotspot_score;
+} FileHotspot;
+
+/**
  * Main statistics container
  */
 typedef struct {
@@ -83,36 +102,44 @@ typedef struct {
     Branch branches[MAX_BRANCHES];
     FileType file_types[MAX_FILE_TYPES];
     int file_type_count;
+    FileHotspot hotspots[MAX_FILES];
+    int hotspot_count;
 } GitStats;
 
 /* Function prototypes */
 static int is_git_repository(void);
-static int get_git_stats(GitStats *stats);
+static int get_git_stats(GitStats *stats, AnalysisMode mode);
 static int get_repository_info(GitStats *stats);
 static int get_commit_stats(GitStats *stats);
 static int get_author_stats(GitStats *stats);
 static int get_branch_stats(GitStats *stats);
 static int get_file_stats(GitStats *stats);
-static void print_stats(const GitStats *stats);
-static void print_stats_json(const GitStats *stats);
+static int get_hotspot_stats(GitStats *stats);
+static void print_stats(const GitStats *stats, AnalysisMode mode);
+static void print_stats_json(const GitStats *stats, AnalysisMode mode);
+static void print_hotspots(const GitStats *stats);
+static void print_hotspots_json(const GitStats *stats);
 static void print_help(void);
-static int parse_arguments(int argc, char *argv[], OutputFormat *format);
+static int parse_arguments(int argc, char *argv[], OutputFormat *format, AnalysisMode *mode);
 static char* execute_git_command(const char* command);
 static int count_lines_in_file(const char* filename);
 static void get_file_extension(const char* filename, char* extension, size_t extension_size);
 static void safe_string_copy(char* dest, const char* src, size_t dest_size);
 static void remove_trailing_newline(char* str);
 static int compare_file_types_by_count(const void* a, const void* b);
+static int compare_hotspots_by_score(const void* a, const void* b);
 static void init_git_stats(GitStats *stats);
+static double calculate_hotspot_score(int commits, int lines_added, int lines_deleted);
 
 /**
  * Main entry point
  */
 int main(int argc, char *argv[]) {
     OutputFormat output_format = OUTPUT_DEFAULT;
+    AnalysisMode analysis_mode = ANALYSIS_BASIC;
     
     /* Parse command line arguments */
-    int parse_result = parse_arguments(argc, argv, &output_format);
+    int parse_result = parse_arguments(argc, argv, &output_format, &analysis_mode);
     if (parse_result == EXIT_HELP_SHOWN || parse_result == EXIT_VERSION_SHOWN) {
         return EXIT_SUCCESS_CODE;
     }
@@ -137,16 +164,16 @@ int main(int argc, char *argv[]) {
     GitStats stats;
     init_git_stats(&stats);
     
-    if (get_git_stats(&stats) != 0) {
+    if (get_git_stats(&stats, analysis_mode) != 0) {
         fprintf(stderr, "Error: Failed to gather git statistics\n");
         return EXIT_ERROR_CODE;
     }
 
     /* Output results in requested format */
     if (output_format == OUTPUT_JSON) {
-        print_stats_json(&stats);
+        print_stats_json(&stats, analysis_mode);
     } else {
-        print_stats(&stats);
+        print_stats(&stats, analysis_mode);
     }
     
     return EXIT_SUCCESS_CODE;
@@ -174,10 +201,8 @@ static void init_git_stats(GitStats *stats) {
 /**
  * Gather all git statistics
  */
-static int get_git_stats(GitStats *stats) {
+static int get_git_stats(GitStats *stats, AnalysisMode mode) {
     assert(stats != NULL);
-    
-    /* Only show progress for default output */
     
     if (get_repository_info(stats) != 0) {
         fprintf(stderr, "Warning: Failed to get repository information\n");
@@ -198,6 +223,14 @@ static int get_git_stats(GitStats *stats) {
     if (get_file_stats(stats) != 0) {
         fprintf(stderr, "Warning: Failed to get file statistics\n");
     }
+    
+    /* Gather hotspot data if requested */
+    if (mode == ANALYSIS_HOTSPOTS) {
+        if (get_hotspot_stats(stats) != 0) {
+            fprintf(stderr, "Warning: Failed to get hotspot statistics\n");
+        }
+    }
+    
     return 0;
 }
 
@@ -434,6 +467,83 @@ static int get_file_stats(GitStats *stats) {
 }
 
 /**
+ * Get file hotspot statistics
+ */
+static int get_hotspot_stats(GitStats *stats) {
+    assert(stats != NULL);
+    
+    FILE *fp = popen("git log --name-only --pretty=format: 2>/dev/null", "r");
+    if (fp == NULL) {
+        return -1;
+    }
+    
+    char filename[MAX_LINE_LENGTH];
+    stats->hotspot_count = 0;
+    
+    /* Count commits per file */
+    while (fgets(filename, sizeof(filename), fp) != NULL) {
+        remove_trailing_newline(filename);
+        
+        /* Skip empty lines */
+        if (strlen(filename) == 0) continue;
+        
+        /* Skip if filename is too long */
+        if (strlen(filename) >= MAX_PATH_LENGTH) continue;
+        
+        /* Find or create hotspot entry */
+        int found = 0;
+        for (int i = 0; i < stats->hotspot_count; i++) {
+            if (strcmp(stats->hotspots[i].filename, filename) == 0) {
+                stats->hotspots[i].commit_count++;
+                found = 1;
+                break;
+            }
+        }
+        
+        if (!found && stats->hotspot_count < MAX_FILES) {
+            safe_string_copy(stats->hotspots[stats->hotspot_count].filename, 
+                           filename, sizeof(stats->hotspots[stats->hotspot_count].filename));
+            stats->hotspots[stats->hotspot_count].commit_count = 1;
+            stats->hotspots[stats->hotspot_count].lines_added = 0;
+            stats->hotspots[stats->hotspot_count].lines_deleted = 0;
+            stats->hotspot_count++;
+        }
+    }
+    pclose(fp);
+    
+    /* Get line change statistics for each file */
+    for (int i = 0; i < stats->hotspot_count; i++) {
+        char command[MAX_COMMAND_LENGTH];
+        int ret = snprintf(command, sizeof(command),
+                "git log --numstat --pretty=format: -- \"%s\" 2>/dev/null | "
+                "awk '{add+=$1; del+=$2} END {print add\" \"del}'",
+                stats->hotspots[i].filename);
+        
+        if (ret > 0 && ret < (int)sizeof(command)) {
+            char *result = execute_git_command(command);
+            if (result != NULL) {
+                sscanf(result, "%d %d", &stats->hotspots[i].lines_added, 
+                       &stats->hotspots[i].lines_deleted);
+                free(result);
+            }
+        }
+        
+        /* Calculate hotspot score */
+        stats->hotspots[i].hotspot_score = calculate_hotspot_score(
+            stats->hotspots[i].commit_count,
+            stats->hotspots[i].lines_added,
+            stats->hotspots[i].lines_deleted
+        );
+    }
+    
+    /* Sort hotspots by score */
+    qsort(stats->hotspots, stats->hotspot_count, sizeof(FileHotspot), 
+          compare_hotspots_by_score);
+    
+    return 0;
+}
+
+/**
  * Execute a git command and return its output
  * Caller is responsible for freeing the returned string
  */
@@ -547,7 +657,7 @@ static int compare_file_types_by_count(const void* a, const void* b) {
 /**
  * Print comprehensive statistics
  */
-static void print_stats(const GitStats *stats) {
+static void print_stats(const GitStats *stats, AnalysisMode mode) {
     assert(stats != NULL);
     
     printf("Repository Statistics for: %s\n", stats->repo_name);
@@ -621,12 +731,52 @@ static void print_stats(const GitStats *stats) {
         }
     }
     printf("\n");
+    
+    /* Print hotspots if analysis was requested */
+    if (mode == ANALYSIS_HOTSPOTS) {
+        print_hotspots(stats);
+    }
+}
+
+/**
+ * Print hotspot analysis
+ */
+static void print_hotspots(const GitStats *stats) {
+    assert(stats != NULL);
+    
+    printf("🔥 Hotspot Analysis (Files with High Churn):\n");
+    
+    if (stats->hotspot_count == 0) {
+        printf("  No hotspots found.\n\n");
+        return;
+    }
+    
+    int hotspots_to_show = (stats->hotspot_count < 15) ? stats->hotspot_count : 15;
+    
+    for (int i = 0; i < hotspots_to_show; i++) {
+        printf("  %2d. %-40s %3d commits, +%d/-%d lines (score: %.1f)\n", 
+               i + 1,
+               stats->hotspots[i].filename,
+               stats->hotspots[i].commit_count,
+               stats->hotspots[i].lines_added,
+               stats->hotspots[i].lines_deleted,
+               stats->hotspots[i].hotspot_score);
+    }
+    
+    if (stats->hotspot_count > 15) {
+        printf("  ... and %d more files\n", stats->hotspot_count - 15);
+    }
+    
+    printf("\n");
+    printf("  📊 Hotspot Score = commits × √(lines_added + lines_deleted + 1)\n");
+    printf("  💡 High scores indicate files that change frequently with significant modifications\n");
+    printf("\n");
 }
 
 /**
  * Print statistics in JSON format
  */
-static void print_stats_json(const GitStats *stats) {
+static void print_stats_json(const GitStats *stats, AnalysisMode mode) {
     assert(stats != NULL);
     
     printf("{\n");
@@ -695,17 +845,53 @@ static void print_stats_json(const GitStats *stats) {
             printf("    }%s\n", (i < types_to_show - 1) ? "," : "");
         }
     }
-    printf("  ]\n");
+    printf("  ]");
+    
+    /* Add hotspots section if analysis was requested */
+    if (mode == ANALYSIS_HOTSPOTS) {
+        printf(",\n");
+        print_hotspots_json(stats);
+    } else {
+        printf("\n");
+    }
+    
     printf("}\n");
+}
+
+/**
+ * Print hotspots in JSON format
+ */
+static void print_hotspots_json(const GitStats *stats) {
+    assert(stats != NULL);
+    
+    printf("  \"hotspots\": [\n");
+    
+    if (stats->hotspot_count > 0) {
+        int hotspots_to_show = (stats->hotspot_count < 15) ? stats->hotspot_count : 15;
+        
+        for (int i = 0; i < hotspots_to_show; i++) {
+            printf("    {\n");
+            printf("      \"filename\": \"%s\",\n", stats->hotspots[i].filename);
+            printf("      \"commits\": %d,\n", stats->hotspots[i].commit_count);
+            printf("      \"lines_added\": %d,\n", stats->hotspots[i].lines_added);
+            printf("      \"lines_deleted\": %d,\n", stats->hotspots[i].lines_deleted);
+            printf("      \"hotspot_score\": %.1f\n", stats->hotspots[i].hotspot_score);
+            printf("    }%s\n", (i < hotspots_to_show - 1) ? "," : "");
+        }
+    }
+    
+    printf("  ]");
 }
 
 /**
  * Parse command line arguments
  */
-static int parse_arguments(int argc, char *argv[], OutputFormat *format) {
+static int parse_arguments(int argc, char *argv[], OutputFormat *format, AnalysisMode *mode) {
     assert(format != NULL);
+    assert(mode != NULL);
     
     *format = OUTPUT_DEFAULT;
+    *mode = ANALYSIS_BASIC;
     
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
@@ -733,6 +919,8 @@ static int parse_arguments(int argc, char *argv[], OutputFormat *format) {
                 fprintf(stderr, "Supported formats: json\n");
                 return EXIT_ERROR_CODE;
             }
+        } else if (strcmp(argv[i], "--hotspots") == 0) {
+            *mode = ANALYSIS_HOTSPOTS;
         } else {
             /* Unknown argument */
             fprintf(stderr, "Error: Unknown argument '%s'\n", argv[i]);
@@ -756,16 +944,20 @@ static void print_help(void) {
     printf("  -h, --help          Show this help message\n");
     printf("  -v, --version       Show version information\n");
     printf("  --output FORMAT     Output format (default: human-readable)\n");
-    printf("                      Supported formats: json\n\n");
+    printf("                      Supported formats: json\n");
+    printf("  --hotspots          Analyze and display file hotspots (high churn)\n\n");
     printf("Features:\n");
     printf("  • Repository overview (commits, authors, branches, files)\n");
     printf("  • Top contributors with commit counts and line changes\n");
     printf("  • Branch information and commit counts\n");
-    printf("  • File type analysis with line counts\n");
+    printf("  • File type analysis with line counts and percentages\n");
+    printf("  • Hotspot detection for identifying high-churn files\n");
     printf("  • Works completely offline with local git data\n\n");
     printf("Examples:\n");
     printf("  git-stat                    # Analyze current repository\n");
+    printf("  git-stat --hotspots         # Include hotspot analysis\n");
     printf("  git-stat --output json      # Output in JSON format\n");
+    printf("  git-stat --hotspots --output json  # Hotspots in JSON format\n");
     printf("  git-stat --help             # Show this help\n");
     printf("  git-stat --version          # Show version info\n\n");
     printf("Exit Codes:\n");
@@ -775,4 +967,30 @@ static void print_help(void) {
     printf("Note: Must be run from within a git repository.\n\n");
     printf("%s\n", PROGRAM_COPYRIGHT);
     printf("License: %s\n", PROGRAM_LICENSE);
+}
+
+/**
+ * Comparison function for sorting hotspots by score
+ */
+static int compare_hotspots_by_score(const void* a, const void* b) {
+    const FileHotspot* hotspot_a = (const FileHotspot*)a;
+    const FileHotspot* hotspot_b = (const FileHotspot*)b;
+    
+    /* Sort in descending order by hotspot score */
+    if (hotspot_a->hotspot_score < hotspot_b->hotspot_score) return 1;
+    if (hotspot_a->hotspot_score > hotspot_b->hotspot_score) return -1;
+    return 0;
+}
+
+/**
+ * Calculate hotspot score based on commits and line changes
+ */
+static double calculate_hotspot_score(int commits, int lines_added, int lines_deleted) {
+    if (commits <= 0) return 0.0;
+    
+    int total_lines = lines_added + lines_deleted;
+    
+    /* Score = commits × √(total_lines + 1) */
+    /* The +1 prevents sqrt(0) and gives small weight to files with commits but no line data */
+    return (double)commits * sqrt((double)(total_lines + 1));
 }

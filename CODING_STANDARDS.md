@@ -377,6 +377,56 @@ for (int i = 0; i < authors_to_show; i++) {
 - **Handle null/empty values** appropriately
 - **Ensure valid JSON structure** even with missing data
 
+## Hotspot Analysis Implementation
+
+### Algorithm Design
+- **Meaningful scoring formula** that combines frequency and magnitude of changes
+- **Mathematical soundness** using sqrt to moderate the impact of very large changes
+- **Intuitive results** where higher scores indicate more problematic files
+
+```c
+/**
+ * Calculate hotspot score based on commits and line changes
+ * Score = commits × √(lines_added + lines_deleted + 1)
+ */
+static double calculate_hotspot_score(int commits, int lines_added, int lines_deleted) {
+    if (commits <= 0) return 0.0;
+    
+    int total_lines = lines_added + lines_deleted;
+    
+    /* The +1 prevents sqrt(0) and gives small weight to files with commits but no line data */
+    return (double)commits * sqrt((double)(total_lines + 1));
+}
+```
+
+### Data Collection Strategy
+- **Efficient git commands** to minimize performance impact
+- **Proper data aggregation** to handle large repositories
+- **Robust parsing** of git output with error handling
+
+```c
+/* Use git log with specific format for efficient parsing */
+fp = popen("git log --name-only --pretty=format: 2>/dev/null", "r");
+
+/* Combine with numstat for line change data */
+snprintf(command, sizeof(command),
+        "git log --numstat --pretty=format: -- \"%s\" 2>/dev/null | "
+        "awk '{add+=$1; del+=$2} END {print add\" \"del}'",
+        filename);
+```
+
+### Performance Considerations
+- **Limit results** to prevent overwhelming output (top 15 hotspots)
+- **Sort efficiently** using qsort for large datasets
+- **Memory management** with fixed-size arrays to avoid fragmentation
+- **Optional analysis** only when requested to maintain fast default operation
+
+### Interpretation Guidelines
+- **High commit count** + **moderate line changes** = Frequent maintenance
+- **Moderate commits** + **high line changes** = Major refactoring
+- **High commits** + **high line changes** = Potential design issues
+- **Consider context** - configuration files vs. core logic files
+
 This coding standard ensures our C code is:
 - **Safe**: Protected against buffer overflows and memory leaks
 - **Reliable**: Proper error handling and resource management
@@ -384,3 +434,4 @@ This coding standard ensures our C code is:
 - **Portable**: Standards-compliant and cross-platform
 - **Secure**: Protected against common vulnerabilities
 - **Interoperable**: Produces valid, parseable output formats
+- **Analytical**: Provides actionable insights for code quality improvement

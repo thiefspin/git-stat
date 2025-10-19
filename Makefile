@@ -1,5 +1,6 @@
 CC = clang
 CFLAGS = -Wall -Wextra -O2 -std=c17
+LDFLAGS = -lm
 PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
 
@@ -8,7 +9,7 @@ all: git-stat
 
 # Build the main executable
 git-stat: main.o
-	$(CC) $(CFLAGS) -o git-stat main.o
+	$(CC) $(CFLAGS) -o git-stat main.o $(LDFLAGS)
 
 # Compile main source file
 main.o: main.c version.h

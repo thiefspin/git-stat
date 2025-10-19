@@ -1,0 +1,367 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  # Code Quality and Linting
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-tidy cppcheck
+
+    - name: Run clang-tidy
+      run: |
+        clang-tidy src/**/*.c -- -Wall -Wextra -std=c17
+
+    - name: Run cppcheck
+      run: |
+        cppcheck --enable=all --error-exitcode=1 --suppress=missingIncludeSystem src/
+
+    - name: Check coding standards
+      run: |
+        # Check for common style issues
+        ! grep -r "	" src/ || (echo "Error: Found tabs instead of spaces" && exit 1)
+        ! grep -r " $" src/ || (echo "Error: Found trailing whitespace" && exit 1)
+
+  # Multi-platform build and test
+  build-and-test:
+    name: Build and Test
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        compiler: [gcc, clang]
+        exclude:
+          # macOS doesn't have gcc in the usual sense (it's clang)
+          - os: macos-latest
+            compiler: gcc
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for git operations
+
+    - name: Setup compiler
+      run: |
+        if [[ "${{ matrix.compiler }}" == "gcc" ]]; then
+          echo "CC=gcc" >> $GITHUB_ENV
+        else
+          echo "CC=clang" >> $GITHUB_ENV
+        fi
+
+    - name: Install dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential git
+
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        # Ensure we have the command line tools
+        xcode-select --install 2>/dev/null || true
+
+    - name: Build project
+      run: |
+        make clean
+        make CC=${{ env.CC }}
+
+    - name: Run basic functionality tests
+      run: |
+        # Test help output
+        ./git-stat --help
+        ./git-stat -h
+
+        # Test version info (if implemented)
+        ./git-stat --version 2>/dev/null || true
+
+        # Test in current repository
+        ./git-stat
+        ./git-stat --output json > test-output.json
+
+        # Validate JSON output
+        if command -v python3 &> /dev/null; then
+          python3 -m json.tool test-output.json > /dev/null
+        fi
+
+        # Test hotspots analysis
+        ./git-stat --hotspots
+        ./git-stat --hotspots --output json > hotspots.json
+
+        # Test activity analysis
+        ./git-stat --activity
+        ./git-stat --activity --output json > activity.json
+
+        # Test combined features
+        ./git-stat --hotspots --activity --output json > combined.json
+
+    - name: Test edge cases
+      run: |
+        # Test error handling for non-git directory
+        mkdir temp-dir && cd temp-dir
+        ../git-stat 2>/dev/null && exit 1 || echo "Correctly failed on non-git directory"
+        cd .. && rm -rf temp-dir
+
+        # Test with minimal git repo
+        mkdir minimal-repo && cd minimal-repo
+        git init
+        git config user.name "Test User"
+        git config user.email "test@example.com"
+        echo "test" > test.txt
+        git add test.txt
+        git commit -m "Initial commit"
+        ../git-stat
+        ../git-stat --output json > ../minimal.json
+        cd .. && rm -rf minimal-repo
+
+        # Validate minimal repo JSON
+        if command -v python3 &> /dev/null; then
+          python3 -m json.tool minimal.json > /dev/null
+        fi
+
+    - name: Test installation
+      run: |
+        # Test user installation
+        make install-user
+        ~/.local/bin/git-stat --help
+
+        # Test system installation (with sudo for Linux)
+        if [[ "$RUNNER_OS" == "Linux" ]]; then
+          sudo make install
+          /usr/local/bin/git-stat --help
+        fi
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: git-stat-${{ matrix.os }}-${{ matrix.compiler }}
+        path: |
+          git-stat
+          *.json
+
+    - name: Performance test
+      run: |
+        # Simple performance check - should complete within reasonable time
+        timeout 30s ./git-stat || (echo "Performance test failed - took too long" && exit 1)
+
+  # Windows build (separate job due to different requirements)
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: >-
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-make
+          git
+
+    - name: Build with MinGW
+      shell: msys2 {0}
+      run: |
+        make CC=gcc
+
+    - name: Test on Windows
+      shell: msys2 {0}
+      run: |
+        ./git-stat.exe --help
+        ./git-stat.exe
+
+    - name: Upload Windows artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: git-stat-windows
+        path: git-stat.exe
+
+  # Memory safety and security checks
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install security tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y valgrind clang
+
+    - name: Build with debug info and sanitizers
+      run: |
+        make clean
+        make debug CC=clang CFLAGS="-g -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer"
+
+    - name: Run with AddressSanitizer
+      run: |
+        ./git-stat --help
+        ./git-stat
+        ./git-stat --output json > /dev/null
+
+    - name: Build for Valgrind
+      run: |
+        make clean
+        make debug CC=gcc
+
+    - name: Run Valgrind memory check
+      run: |
+        valgrind --tool=memcheck --leak-check=full --error-exitcode=1 ./git-stat --help
+        valgrind --tool=memcheck --leak-check=full --error-exitcode=1 ./git-stat
+
+  # Documentation and release preparation
+  documentation:
+    name: Documentation Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Check README
+      run: |
+        # Check that README exists and has basic sections
+        grep -q "# Git Statistics Utility" README.md
+        grep -q "## Installation" README.md
+        grep -q "## Usage" README.md
+        grep -q "## License" README.md
+
+    - name: Check code documentation
+      run: |
+        # Check that header files have documentation
+        find src/ -name "*.h" -exec grep -l "/*" {} \; | wc -l
+
+    - name: Validate Makefile targets
+      run: |
+        make --dry-run clean
+        make --dry-run all
+        make --dry-run install
+        make --dry-run test
+
+  # Create release artifacts
+  release:
+    name: Create Release
+    if: github.event_name == 'release'
+    needs: [lint, build-and-test, build-windows, security-scan, documentation]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Create source tarball
+      run: |
+        make dist
+        mv git-stat-1.0.tar.gz git-stat-${{ github.ref_name }}-source.tar.gz
+
+    - name: Prepare binary releases
+      run: |
+        # Linux binary
+        chmod +x git-stat-ubuntu-latest-gcc/git-stat
+        tar -czf git-stat-${{ github.ref_name }}-linux-x86_64.tar.gz -C git-stat-ubuntu-latest-gcc git-stat
+
+        # macOS binary
+        chmod +x git-stat-macos-latest-clang/git-stat
+        tar -czf git-stat-${{ github.ref_name }}-macos-x86_64.tar.gz -C git-stat-macos-latest-clang git-stat
+
+        # Windows binary
+        zip git-stat-${{ github.ref_name }}-windows-x86_64.zip git-stat-windows/git-stat.exe
+
+    - name: Calculate checksums
+      run: |
+        sha256sum git-stat-${{ github.ref_name }}-*.tar.gz git-stat-${{ github.ref_name }}-*.zip > checksums.txt
+
+    - name: Upload release assets
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          git-stat-${{ github.ref_name }}-source.tar.gz
+          git-stat-${{ github.ref_name }}-linux-x86_64.tar.gz
+          git-stat-${{ github.ref_name }}-macos-x86_64.tar.gz
+          git-stat-${{ github.ref_name }}-windows-x86_64.zip
+          checksums.txt
+        body: |
+          ## Git Statistics Utility ${{ github.ref_name }}
+
+          ### Installation
+
+          **Linux/macOS:**
+          ```bash
+          # Download and extract
+          tar -xzf git-stat-${{ github.ref_name }}-linux-x86_64.tar.gz
+          # or
+          tar -xzf git-stat-${{ github.ref_name }}-macos-x86_64.tar.gz
+
+          # Install
+          chmod +x git-stat
+          mv git-stat ~/.local/bin/
+          ```
+
+          **Windows:**
+          ```cmd
+          # Extract git-stat-${{ github.ref_name }}-windows-x86_64.zip
+          # Add git-stat.exe to your PATH
+          ```
+
+          **From Source:**
+          ```bash
+          tar -xzf git-stat-${{ github.ref_name }}-source.tar.gz
+          cd git-stat-${{ github.ref_name }}
+          make
+          make install-user
+          ```
+
+          ### Verification
+          All binaries are built automatically and checksums are provided in `checksums.txt`.
+
+          ### Changes
+          See CHANGELOG.md for detailed changes in this release.
+
+  # Nightly builds for development
+  nightly:
+    name: Nightly Build
+    if: github.ref == 'refs/heads/develop'
+    needs: [lint, build-and-test]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build nightly
+      run: |
+        make clean
+        make CC=clang
+
+    - name: Create nightly artifact
+      run: |
+        tar -czf git-stat-nightly-$(date +%Y%m%d).tar.gz git-stat README.md LICENSE
+
+    - name: Upload nightly build
+      uses: actions/upload-artifact@v3
+      with:
+        name: nightly-build
+        path: git-stat-nightly-*.tar.gz
+        retention-days: 7

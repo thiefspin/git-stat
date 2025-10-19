@@ -1,0 +1,296 @@
+name: "Pull Request Labeler"
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Label pull request
+      uses: actions/labeler@v4
+      with:
+        repo-token: "${{ secrets.GITHUB_TOKEN }}"
+        configuration-path: .github/labeler.yml
+        sync-labels: true
+
+  # Additional custom labeling based on PR content
+  custom-labeling:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        ref: ${{ github.event.pull_request.head.sha }}
+
+    - name: Get changed files
+      id: changed-files
+      run: |
+        # Get list of changed files
+        git diff --name-only origin/${{ github.event.pull_request.base.ref }}..HEAD > changed_files.txt
+        echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+        cat changed_files.txt >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Analyze changes and add labels
+      uses: actions/github-script@v6
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const changedFiles = `${{ steps.changed-files.outputs.changed_files }}`.split('\n').filter(f => f);
+          const { owner, repo, number } = context.issue;
+
+          console.log('Changed files:', changedFiles);
+
+          const labels = [];
+
+          // Analyze file changes
+          for (const file of changedFiles) {
+            // Core functionality changes
+            if (file.startsWith('src/') && file.endsWith('.c')) {
+              labels.push('code');
+              if (file.includes('main.c')) {
+                labels.push('core');
+              }
+            }
+
+            // Header file changes
+            if (file.endsWith('.h')) {
+              labels.push('api');
+              labels.push('code');
+            }
+
+            // Analysis module changes
+            if (file.startsWith('src/analysis/')) {
+              labels.push('enhancement');
+              labels.push('analysis');
+            }
+
+            // Output formatting changes
+            if (file.startsWith('src/output/')) {
+              labels.push('output');
+              labels.push('formatting');
+            }
+
+            // Utility changes
+            if (file.startsWith('src/utils/')) {
+              labels.push('utilities');
+              labels.push('code');
+            }
+
+            // Build system changes
+            if (file === 'Makefile' || file === 'install.sh') {
+              labels.push('build');
+              labels.push('infrastructure');
+            }
+
+            // Documentation changes
+            if (file.endsWith('.md') || file.startsWith('docs/')) {
+              labels.push('documentation');
+              if (file === 'README.md') {
+                labels.push('readme');
+              }
+            }
+
+            // CI/CD changes
+            if (file.startsWith('.github/')) {
+              labels.push('ci/cd');
+              labels.push('infrastructure');
+            }
+
+            // Configuration files
+            if (file === '.gitignore' || file.startsWith('.')) {
+              labels.push('configuration');
+            }
+
+            // License changes
+            if (file === 'LICENSE' || file.includes('COPYING')) {
+              labels.push('legal');
+            }
+
+            // Standards and guidelines
+            if (file === 'CODING_STANDARDS.md' || file.includes('CONTRIBUTING')) {
+              labels.push('standards');
+              labels.push('documentation');
+            }
+          }
+
+          // Check PR title and description for additional context
+          const title = context.payload.pull_request.title.toLowerCase();
+          const body = (context.payload.pull_request.body || '').toLowerCase();
+          const fullText = title + ' ' + body;
+
+          // Bug fix indicators
+          if (title.includes('fix') || title.includes('bug') || body.includes('fixes #')) {
+            labels.push('bug');
+            labels.push('fix');
+          }
+
+          // Feature indicators
+          if (title.includes('feat') || title.includes('add') || title.includes('implement')) {
+            labels.push('enhancement');
+            labels.push('feature');
+          }
+
+          // Performance improvements
+          if (fullText.includes('performance') || fullText.includes('optimize') || fullText.includes('speed')) {
+            labels.push('performance');
+          }
+
+          // Security related
+          if (fullText.includes('security') || fullText.includes('vulnerabil') || fullText.includes('cve')) {
+            labels.push('security');
+          }
+
+          // Breaking changes
+          if (fullText.includes('breaking') || title.includes('!:')) {
+            labels.push('breaking change');
+          }
+
+          // Refactoring
+          if (fullText.includes('refactor') || fullText.includes('cleanup') || fullText.includes('reorganize')) {
+            labels.push('refactoring');
+          }
+
+          // Testing
+          if (fullText.includes('test') && !fullText.includes('testing needed')) {
+            labels.push('testing');
+          }
+
+          // Dependencies
+          if (fullText.includes('depend') || fullText.includes('library') || fullText.includes('external')) {
+            labels.push('dependencies');
+          }
+
+          // Size-based labels
+          const fileCount = changedFiles.length;
+          if (fileCount >= 20) {
+            labels.push('large');
+          } else if (fileCount >= 10) {
+            labels.push('medium');
+          } else if (fileCount <= 3) {
+            labels.push('small');
+          }
+
+          // Remove duplicates
+          const uniqueLabels = [...new Set(labels)];
+
+          if (uniqueLabels.length > 0) {
+            console.log('Adding labels:', uniqueLabels);
+
+            try {
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: number,
+                labels: uniqueLabels
+              });
+            } catch (error) {
+              console.error('Error adding labels:', error);
+            }
+          }
+
+    - name: Add size label based on diff
+      uses: actions/github-script@v6
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const { owner, repo, number } = context.issue;
+
+          // Get PR diff stats
+          const pr = await github.rest.pulls.get({
+            owner,
+            repo,
+            pull_number: number
+          });
+
+          const additions = pr.data.additions;
+          const deletions = pr.data.deletions;
+          const totalChanges = additions + deletions;
+
+          let sizeLabel = '';
+
+          if (totalChanges < 50) {
+            sizeLabel = 'size/XS';
+          } else if (totalChanges < 200) {
+            sizeLabel = 'size/S';
+          } else if (totalChanges < 500) {
+            sizeLabel = 'size/M';
+          } else if (totalChanges < 1000) {
+            sizeLabel = 'size/L';
+          } else {
+            sizeLabel = 'size/XL';
+          }
+
+          console.log(`Total changes: ${totalChanges}, Size label: ${sizeLabel}`);
+
+          try {
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: number,
+              labels: [sizeLabel]
+            });
+          } catch (error) {
+            console.error('Error adding size label:', error);
+          }
+
+    - name: Check for first-time contributor
+      uses: actions/github-script@v6
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const { owner, repo, number } = context.issue;
+          const author = context.payload.pull_request.user.login;
+
+          // Check if this is the author's first contribution
+          const { data: prs } = await github.rest.pulls.list({
+            owner,
+            repo,
+            state: 'all',
+            creator: author
+          });
+
+          // Also check issues
+          const { data: issues } = await github.rest.issues.list({
+            owner,
+            repo,
+            state: 'all',
+            creator: author
+          });
+
+          const totalContributions = prs.length + issues.length;
+
+          if (totalContributions <= 1) {
+            console.log('First-time contributor detected');
+
+            try {
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: number,
+                labels: ['first contribution']
+              });
+
+              // Add welcoming comment
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: number,
+                body: `👋 Welcome to git-stat, @${author}! Thank you for your first contribution!\n\nA maintainer will review your pull request soon. In the meantime, please make sure:\n\n- [ ] Your code follows our [coding standards](CODING_STANDARDS.md)\n- [ ] You've tested your changes\n- [ ] You've updated documentation if needed\n\nWe appreciate your contribution to the project! 🎉`
+              });
+            } catch (error) {
+              console.error('Error handling first-time contributor:', error);
+            }
+          }

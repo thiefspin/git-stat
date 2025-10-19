@@ -1,0 +1,113 @@
+name: Question
+description: Ask a question about git-stat usage, features, or development
+title: "[QUESTION] "
+labels: ["question", "help wanted"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question about git-stat? We're here to help! 🤔
+
+        Before asking, please:
+        - Check the README.md for basic usage information
+        - Search existing issues to see if your question has been answered
+        - Consider if this might be a bug report or feature request instead
+
+  - type: dropdown
+    id: question-category
+    attributes:
+      label: Question Category
+      description: What type of question do you have?
+      options:
+        - Usage and Commands
+        - Installation and Building
+        - Output and Analysis
+        - Performance and Limitations
+        - Development and Contributing
+        - Integration with Other Tools
+        - Troubleshooting
+        - General
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What would you like to know?
+      placeholder: |
+        Please be as specific as possible. Include:
+        - What you're trying to accomplish
+        - What you've already tried
+        - Any relevant context about your repository or environment
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: |
+        Provide any additional information that might be relevant:
+        - Your operating system and git-stat version
+        - Repository characteristics (size, type, special features)
+        - Related commands you've tried
+        - Screenshots or output examples (if helpful)
+      placeholder: |
+        OS: Ubuntu 22.04
+        git-stat version: 1.0.0
+        Repository: Large open source project (~50k commits, 200 contributors)
+
+        I'm trying to understand how the hotspot score is calculated...
+    validations:
+      required: false
+
+  - type: textarea
+    id: what-tried
+    attributes:
+      label: What Have You Tried?
+      description: What steps have you already taken to find the answer?
+      placeholder: |
+        - Read the README and help output
+        - Searched existing issues
+        - Tried different command options
+        - Looked at the source code
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: research-done
+    attributes:
+      label: Research Checklist
+      description: Please confirm you've done basic research
+      options:
+        - label: I have read the README.md file
+          required: false
+        - label: I have searched existing issues and discussions
+          required: false
+        - label: I have tried the --help command option
+          required: false
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: How urgent is this question?
+      description: This helps us prioritize responses
+      options:
+        - Just curious
+        - Would be helpful to know
+        - Blocking my work
+        - Critical issue
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this question, you agree to follow our Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

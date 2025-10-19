@@ -1,0 +1,137 @@
+name: 'Dependency Review'
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v4
+
+      - name: 'Dependency Review'
+        uses: actions/dependency-review-action@v3
+        with:
+          fail-on-severity: moderate
+          allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, GPL-2.0, GPL-3.0, LGPL-2.1, LGPL-3.0
+          deny-licenses: AGPL-1.0, AGPL-3.0, GPL-1.0
+          comment-summary-in-pr: true
+
+  # Check for known vulnerabilities in system dependencies
+  system-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v4
+
+      - name: 'Check build dependencies'
+        run: |
+          echo "Checking system build dependencies for known issues..."
+
+          # Check if we're using any vulnerable versions of common tools
+          echo "=== Build Tools Information ==="
+          gcc --version || true
+          clang --version || true
+          make --version || true
+          git --version || true
+
+          # Check for any dependency management files that might introduce vulnerabilities
+          echo "=== Dependency Files Check ==="
+          if [ -f "requirements.txt" ]; then
+            echo "Found Python requirements - checking..."
+            pip-audit -r requirements.txt || true
+          fi
+
+          if [ -f "package.json" ]; then
+            echo "Found Node.js package.json - this shouldn't be here for a C project"
+            exit 1
+          fi
+
+          if [ -f "Cargo.toml" ]; then
+            echo "Found Rust Cargo.toml - this shouldn't be here for a C project"
+            exit 1
+          fi
+
+          echo "=== C Project Dependency Analysis ==="
+          echo "Analyzing C source files for potential vulnerable patterns..."
+
+          # Check for dangerous C functions
+          echo "Checking for potentially dangerous C functions..."
+          DANGEROUS_FUNCTIONS="gets strcpy strcat sprintf vsprintf"
+          for func in $DANGEROUS_FUNCTIONS; do
+            if grep -r "$func(" src/; then
+              echo "WARNING: Found usage of potentially dangerous function: $func"
+              echo "Consider using safer alternatives like fgets, strncpy, strncat, snprintf"
+            fi
+          done
+
+          # Check for buffer operations without bounds checking
+          echo "Checking for buffer operations..."
+          if grep -r "memcpy\|memmove\|memset" src/; then
+            echo "INFO: Found memory operations - ensure bounds are properly checked"
+          fi
+
+          # Check for format string vulnerabilities
+          echo "Checking for potential format string issues..."
+          if grep -r "printf.*%.*\$" src/; then
+            echo "INFO: Found printf-style functions - ensure format strings are not user-controlled"
+          fi
+
+  # Verify no unexpected dependencies are introduced
+  dependency-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v4
+
+      - name: 'Verify minimal dependencies'
+        run: |
+          echo "=== Verifying C Project Dependencies ==="
+
+          # This is a C project - it should have minimal external dependencies
+          echo "Expected dependencies for this C project:"
+          echo "- Standard C library (libc)"
+          echo "- Math library (libm)"
+          echo "- POSIX system calls"
+          echo "- Git command-line interface"
+
+          # Check Makefile for any unexpected external libraries
+          echo "Analyzing Makefile for dependencies..."
+          if grep -E "pkg-config|curl|ssl|crypto" Makefile; then
+            echo "WARNING: Found unexpected external library dependencies"
+            echo "This project should have minimal dependencies"
+          fi
+
+          # Verify we're not pulling in package managers or dependency files
+          echo "Checking for unwanted dependency management files..."
+          UNWANTED_FILES=".npmrc package-lock.json yarn.lock Pipfile Pipfile.lock requirements.txt Cargo.lock composer.json"
+          for file in $UNWANTED_FILES; do
+            if [ -f "$file" ]; then
+              echo "ERROR: Found unwanted dependency file: $file"
+              echo "This C project should not have $file"
+              exit 1
+            fi
+          done
+
+          # Check that we're not accidentally including vendored dependencies
+          echo "Checking for vendored code..."
+          if [ -d "vendor" ] || [ -d "third_party" ] || [ -d "external" ]; then
+            echo "Found potential vendored dependencies directory"
+            echo "Please document any third-party code and ensure licensing compliance"
+          fi
+
+          # Verify git submodules (if any) are intentional
+          if [ -f ".gitmodules" ]; then
+            echo "Found git submodules:"
+            cat .gitmodules
+            echo "Ensure all submodules are necessary and from trusted sources"
+          fi
+
+          echo "=== Dependency Check Complete ==="
+          echo "This C project maintains minimal dependencies as expected"

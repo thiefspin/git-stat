@@ -1,0 +1,169 @@
+name: Bug Report
+description: File a bug report to help us improve git-stat
+title: "[BUG] "
+labels: ["bug", "triage needed"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug! This helps us improve git-stat for everyone.
+
+        Before submitting, please:
+        - Search existing issues to avoid duplicates
+        - Make sure you're using the latest version
+        - Try to reproduce the issue in a clean environment
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: What version of git-stat are you running?
+      placeholder: "1.0.0 (or output of git-stat --version)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: What operating system are you using?
+      options:
+        - Linux (Ubuntu/Debian)
+        - Linux (RedHat/CentOS/Fedora)
+        - Linux (Arch)
+        - Linux (Other)
+        - macOS (Intel)
+        - macOS (Apple Silicon)
+        - Windows (WSL)
+        - Windows (MinGW/MSYS2)
+        - Windows (Native)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: compiler
+    attributes:
+      label: Compiler
+      description: Which compiler did you use to build git-stat?
+      placeholder: "gcc 11.4.0, clang 14.0.0, etc."
+    validations:
+      required: false
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is
+      placeholder: "git-stat crashes when analyzing repositories with..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: Steps to Reproduce
+      description: Tell us how to reproduce this bug
+      placeholder: |
+        1. Navigate to repository with...
+        2. Run 'git-stat --hotspots'
+        3. See error...
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+      placeholder: "git-stat should display hotspot analysis without errors"
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior
+      description: What actually happened? Include any error messages or output
+      placeholder: |
+        Segmentation fault (core dumped)
+
+        Or paste the exact error message here...
+    validations:
+      required: true
+
+  - type: input
+    id: repository-size
+    attributes:
+      label: Repository Size
+      description: Approximate size of the repository you're analyzing
+      placeholder: "500 commits, 50 authors, 1000 files"
+    validations:
+      required: false
+
+  - type: textarea
+    id: command-used
+    attributes:
+      label: Command Used
+      description: The exact command you ran when the bug occurred
+      placeholder: "git-stat --hotspots --activity --output json"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: |
+        Add any other context about the problem here.
+
+        If the bug involves specific repository characteristics, please describe them:
+        - Repository type (personal project, open source, enterprise, etc.)
+        - Special characters in file names or commit messages
+        - Unusually large files or commits
+        - Non-standard git configurations
+      placeholder: "This happens only with repositories that have..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs or Output
+      description: |
+        If applicable, add any relevant logs, stack traces, or debug output.
+
+        To get debug information, try building with: `make debug CC=gcc CFLAGS="-g -DDEBUG"`
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: environment-checks
+    attributes:
+      label: Environment Checks
+      description: Please verify the following
+      options:
+        - label: I am running the latest version of git-stat
+          required: false
+        - label: I have git installed and accessible from command line
+          required: true
+        - label: I am running this from within a valid git repository
+          required: true
+        - label: I have read the README and troubleshooting section
+          required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

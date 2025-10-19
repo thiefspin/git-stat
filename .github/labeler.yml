@@ -1,0 +1,207 @@
+# Configuration for the Pull Request Labeler
+# This file defines which labels to apply based on file patterns
+
+# Core functionality
+core:
+  - src/main.c
+  - src/git_stats.c
+  - src/git_stats.h
+  - src/version.h
+
+# Code changes (any C source or header files)
+code:
+  - 'src/**/*.c'
+  - 'src/**/*.h'
+
+# API and interface changes
+api:
+  - 'src/**/*.h'
+  - src/git_stats.h
+
+# Analysis features
+analysis:
+  - 'src/analysis/**/*'
+  - 'src/analysis/*.c'
+  - 'src/analysis/*.h'
+
+# Output formatting
+output:
+  - 'src/output/**/*'
+  - 'src/output/*.c'
+  - 'src/output/*.h'
+
+formatting:
+  - 'src/output/**/*'
+  - 'src/output/human_output.c'
+  - 'src/output/json_output.c'
+  - 'src/output/formatters.h'
+
+# Utilities
+utilities:
+  - 'src/utils/**/*'
+  - 'src/utils/*.c'
+  - 'src/utils/*.h'
+
+# Build system and infrastructure
+build:
+  - Makefile
+  - install.sh
+  - '*.mk'
+  - build.sh
+  - configure
+
+infrastructure:
+  - Makefile
+  - install.sh
+  - '.github/**/*'
+  - '.gitignore'
+  - '.gitattributes'
+
+# CI/CD
+ci/cd:
+  - '.github/workflows/**/*'
+  - '.github/actions/**/*'
+  - '.github/*.yml'
+  - '.github/*.yaml'
+
+# Documentation
+documentation:
+  - '**/*.md'
+  - '**/*.txt'
+  - 'docs/**/*'
+  - 'doc/**/*'
+
+readme:
+  - README.md
+  - readme.md
+  - README.txt
+
+standards:
+  - CODING_STANDARDS.md
+  - CONTRIBUTING.md
+  - CODE_OF_CONDUCT.md
+  - STYLE_GUIDE.md
+
+# Configuration
+configuration:
+  - '.gitignore'
+  - '.gitattributes'
+  - '.editorconfig'
+  - '.clang-format'
+  - '.clang-tidy'
+  - 'config/**/*'
+  - '**/*.conf'
+  - '**/*.config'
+  - '**/*.ini'
+
+# Legal and licensing
+legal:
+  - LICENSE
+  - LICENSE.*
+  - COPYING
+  - COPYING.*
+  - COPYRIGHT
+  - NOTICE
+  - PATENTS
+
+# Security
+security:
+  - 'SECURITY.md'
+  - '.github/SECURITY.md'
+  - '**/*security*'
+  - '**/*vuln*'
+
+# Testing (if we add tests later)
+testing:
+  - 'test/**/*'
+  - 'tests/**/*'
+  - '**/*test*'
+  - '**/*_test.c'
+  - '**/*_test.h'
+  - '**/test_*.c'
+  - '**/test_*.h'
+
+# Examples and samples
+examples:
+  - 'examples/**/*'
+  - 'sample/**/*'
+  - 'samples/**/*'
+  - 'demo/**/*'
+
+# Scripts
+scripts:
+  - '**/*.sh'
+  - '**/*.bash'
+  - '**/*.zsh'
+  - 'scripts/**/*'
+  - 'tools/**/*'
+
+# Dependencies (if any are added)
+dependencies:
+  - 'vendor/**/*'
+  - 'third_party/**/*'
+  - 'external/**/*'
+  - 'deps/**/*'
+  - '.gitmodules'
+  - 'requirements.txt'
+  - 'package.json'
+  - 'Cargo.toml'
+
+# Performance related
+performance:
+  - '**/*perf*'
+  - '**/*benchmark*'
+  - '**/*profil*'
+  - '**/*optim*'
+
+# Hotspot analysis specific
+hotspots:
+  - 'src/analysis/hotspots.c'
+  - 'src/analysis/hotspots.h'
+
+# Activity analysis specific
+activity:
+  - 'src/analysis/activity.c'
+  - 'src/analysis/activity.h'
+
+# String utilities
+strings:
+  - 'src/utils/string_utils.c'
+  - 'src/utils/string_utils.h'
+
+# Git command utilities
+git-commands:
+  - 'src/utils/git_commands.c'
+  - 'src/utils/git_commands.h'
+
+# JSON output
+json:
+  - 'src/output/json_output.c'
+  - '**/*json*'
+
+# Human readable output
+human-output:
+  - 'src/output/human_output.c'
+
+# Memory management
+memory:
+  - '**/*memory*'
+  - '**/*alloc*'
+  - '**/*malloc*'
+  - '**/*free*'
+
+# Error handling
+error-handling:
+  - '**/*error*'
+  - '**/*exception*'
+
+# Refactoring (for organizational changes)
+refactoring:
+  - any: ['src/**/*.c', 'src/**/*.h']
+    all: ['src/**/*.c', 'src/**/*.h']
+
+# Large changes (will be overridden by the custom labeling workflow)
+large:
+  - changed-files:
+    - any-glob-to-any-file: ['**/*']
+    - count: '>= 20'

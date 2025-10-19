@@ -1,0 +1,212 @@
+name: Feature Request
+description: Suggest a new feature or enhancement for git-stat
+title: "[FEATURE] "
+labels: ["enhancement", "feature request", "triage needed"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a new feature! Your ideas help make git-stat better for everyone.
+
+        Before submitting, please:
+        - Search existing issues to see if this has been requested before
+        - Consider if this fits with the project's goals (fast, lightweight git analysis)
+        - Think about how this would work with the current command-line interface
+
+  - type: dropdown
+    id: feature-category
+    attributes:
+      label: Feature Category
+      description: What type of feature are you requesting?
+      options:
+        - Analysis Enhancement (new statistics or metrics)
+        - Output Format (new ways to display data)
+        - Performance Improvement
+        - User Interface/Command Line
+        - Integration (with other tools)
+        - Build/Installation
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: feature-summary
+    attributes:
+      label: Feature Summary
+      description: A brief, clear summary of the feature you'd like to see
+      placeholder: "Add support for analyzing code complexity metrics..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem-description
+    attributes:
+      label: Problem Description
+      description: |
+        What problem does this feature solve? What is the current limitation?
+
+        Help us understand the "why" behind your request.
+      placeholder: |
+        Currently, git-stat doesn't show...
+        This makes it difficult to...
+        Users have to manually...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: |
+        Describe your ideal solution. How should this feature work?
+
+        Be as specific as possible about:
+        - Command-line interface (new flags, options)
+        - Expected output format
+        - Integration with existing features
+      placeholder: |
+        Add a new `--complexity` flag that would:
+        1. Analyze cyclomatic complexity per file
+        2. Show top 10 most complex functions
+        3. Output in both human-readable and JSON formats
+
+        Example usage:
+        git-stat --complexity
+        git-stat --complexity --output json
+    validations:
+      required: true
+
+  - type: textarea
+    id: example-output
+    attributes:
+      label: Example Output
+      description: |
+        If applicable, show what the output might look like.
+        This helps us understand your vision better.
+      render: text
+      placeholder: |
+        📊 Code Complexity Analysis:
+           1. src/parser.c          complexity: 45 (HIGH)
+           2. src/analyzer.c        complexity: 32 (MEDIUM)
+           3. src/utils.c           complexity: 12 (LOW)
+
+        🔥 Most Complex Functions:
+           1. parse_git_log()       complexity: 15
+           2. calculate_stats()     complexity: 12
+           3. format_output()       complexity: 8
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: |
+        Are there any alternative approaches you've considered?
+        What other tools or methods could solve this problem?
+      placeholder: |
+        - Could use external tool like lizard for complexity analysis
+        - Could integrate with cloc for language-specific metrics
+        - Could add configuration file for custom metrics
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority Level
+      description: How important is this feature to you?
+      options:
+        - Nice to have
+        - Would be helpful
+        - Important for my workflow
+        - Critical need
+    validations:
+      required: true
+
+  - type: input
+    id: use-case
+    attributes:
+      label: Primary Use Case
+      description: What's your main use case for this feature?
+      placeholder: "Code review process, team productivity analysis, technical debt assessment..."
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: implementation-willingness
+    attributes:
+      label: Implementation
+      description: Are you willing to help implement this feature?
+      options:
+        - label: I would be willing to implement this feature myself
+          required: false
+        - label: I would be willing to help test this feature
+          required: false
+        - label: I can provide additional requirements or examples
+          required: false
+
+  - type: textarea
+    id: technical-considerations
+    attributes:
+      label: Technical Considerations
+      description: |
+        Any technical aspects we should consider?
+
+        Think about:
+        - Performance impact on large repositories
+        - Memory usage implications
+        - Dependencies that might be needed
+        - Compatibility with different git setups
+      placeholder: |
+        - Should work efficiently on repositories with 100k+ commits
+        - Might need to parse additional git data
+        - Could add dependency on libgit2 for better performance
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: |
+        Add any other context, links, or examples that might be helpful.
+
+        You can include:
+        - Links to similar features in other tools
+        - Research papers or articles
+        - Screenshots or mockups
+        - Related issues or discussions
+      placeholder: |
+        Similar to how 'git-fame' handles author statistics:
+        https://github.com/casperdcl/git-fame
+
+        Academic paper on code complexity metrics:
+        https://example.com/paper.pdf
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: project-alignment
+    attributes:
+      label: Project Alignment
+      description: Please confirm this feature aligns with git-stat's goals
+      options:
+        - label: This feature maintains git-stat's focus on being fast and lightweight
+          required: true
+        - label: This feature works with local git data (no network required)
+          required: true
+        - label: This feature would be useful for analyzing any git repository
+          required: true
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this feature request, you agree to follow our Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

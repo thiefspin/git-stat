@@ -11,7 +11,7 @@ git-stat: main.o
 	$(CC) $(CFLAGS) -o git-stat main.o
 
 # Compile main source file
-main.o: main.c
+main.o: main.c version.h
 	$(CC) $(CFLAGS) -c main.c
 
 # Install to system
@@ -42,7 +42,7 @@ test: git-stat
 
 # Create distribution tarball
 dist: clean
-	tar -czf git-stat-1.0.tar.gz *.c *.h Makefile README.md LICENSE
+	tar -czf git-stat-1.0.tar.gz *.c *.h Makefile README.md LICENSE install.sh
 
 # Development targets
 debug: CFLAGS += -g -DDEBUG

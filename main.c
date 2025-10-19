@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <dirent.h>
+#include "version.h"
 
 #define MAX_LINE_LENGTH 1024
 #define MAX_COMMAND_LENGTH 512
@@ -60,12 +61,18 @@ int count_lines_in_file(const char* filename);
 void get_file_extension(const char* filename, char* extension);
 
 int main(int argc, char *argv[]) {
-    printf("Git Statistics Utility v1.0\n");
+    printf("%s v%s\n", PROGRAM_NAME, VERSION_STRING);
     printf("============================\n\n");
 
     // Check for help flag
     if (argc > 1 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)) {
         print_help();
+        return 0;
+    }
+    
+    // Check for version flag
+    if (argc > 1 && (strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--version") == 0)) {
+        printf("%s\n", get_version_string());
         return 0;
     }
 
@@ -352,13 +359,13 @@ void print_stats(const GitStats *stats) {
 }
 
 void print_help(void) {
-    printf("Git Statistics Utility v1.0\n");
+    printf("%s v%s\n", PROGRAM_NAME, VERSION_STRING);
     printf("============================\n\n");
     printf("Usage: git-stat [OPTIONS]\n\n");
-    printf("This utility analyzes your local git repository and provides comprehensive\n");
-    printf("statistics about commits, contributors, branches, and file composition.\n\n");
+    printf("%s\n\n", PROGRAM_DESCRIPTION);
     printf("Options:\n");
-    printf("  -h, --help    Show this help message\n\n");
+    printf("  -h, --help     Show this help message\n");
+    printf("  -v, --version  Show version information\n\n");
     printf("Features:\n");
     printf("  • Repository overview (commits, authors, branches, files)\n");
     printf("  • Top contributors with commit counts and line changes\n");
@@ -367,6 +374,9 @@ void print_help(void) {
     printf("  • Works completely offline with local git data\n\n");
     printf("Examples:\n");
     printf("  git-stat          # Analyze current repository\n");
-    printf("  git-stat --help   # Show this help\n\n");
-    printf("Note: Must be run from within a git repository.\n");
+    printf("  git-stat --help   # Show this help\n");
+    printf("  git-stat --version # Show version info\n\n");
+    printf("Note: Must be run from within a git repository.\n\n");
+    printf("%s\n", PROGRAM_COPYRIGHT);
+    printf("License: %s\n", PROGRAM_LICENSE);
 }

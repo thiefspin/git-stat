@@ -2,9 +2,9 @@ name: Code Format Check
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   format-check:
@@ -12,229 +12,229 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Install formatting tools
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang-format indent
+      - name: Install formatting tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format indent
 
-    - name: Check indentation (spaces vs tabs)
-      run: |
-        echo "Checking for tabs in source files..."
-        if grep -r $'\t' src/ --include="*.c" --include="*.h"; then
-          echo "❌ Found tabs in source files. Please use 4 spaces for indentation."
-          exit 1
-        fi
-        echo "✅ No tabs found - using spaces for indentation"
-
-    - name: Check for trailing whitespace
-      run: |
-        echo "Checking for trailing whitespace..."
-        if grep -r ' $' src/ --include="*.c" --include="*.h"; then
-          echo "❌ Found trailing whitespace. Please remove it."
-          exit 1
-        fi
-        echo "✅ No trailing whitespace found"
-
-    - name: Check line endings
-      run: |
-        echo "Checking for consistent line endings (LF)..."
-        if file src/**/*.c src/**/*.h | grep -v 'ASCII text$' | grep -v 'UTF-8 Unicode text$'; then
-          echo "❌ Found files with inconsistent or binary content"
-          exit 1
-        fi
-        echo "✅ All source files have consistent line endings"
-
-    - name: Check file encoding
-      run: |
-        echo "Checking file encoding (should be UTF-8 or ASCII)..."
-        find src/ -name "*.c" -o -name "*.h" | while read file; do
-          if ! file "$file" | grep -q -E "(ASCII|UTF-8)"; then
-            echo "❌ File $file has unexpected encoding"
+      - name: Check indentation (spaces vs tabs)
+        run: |
+          echo "Checking for tabs in source files..."
+          if grep -r $'\t' src/ --include="*.c" --include="*.h"; then
+            echo "❌ Found tabs in source files. Please use 4 spaces for indentation."
             exit 1
           fi
-        done
-        echo "✅ All source files have proper encoding"
+          echo "✅ No tabs found - using spaces for indentation"
 
-    - name: Check for consistent header guards
-      run: |
-        echo "Checking header guard patterns..."
-        find src/ -name "*.h" | while read header; do
-          if ! grep -q "#ifndef.*_H" "$header" || ! grep -q "#define.*_H" "$header" || ! grep -q "#endif" "$header"; then
-            echo "⚠️  Header $header might be missing proper header guards"
+      - name: Check for trailing whitespace
+        run: |
+          echo "Checking for trailing whitespace..."
+          if grep -r ' $' src/ --include="*.c" --include="*.h"; then
+            echo "❌ Found trailing whitespace. Please remove it."
+            exit 1
           fi
-        done
-        echo "✅ Header guard check completed"
+          echo "✅ No trailing whitespace found"
 
-    - name: Check function naming conventions
-      run: |
-        echo "Checking function naming conventions (snake_case)..."
-        # Look for functions that don't follow snake_case
-        if grep -r -E "^[a-zA-Z_][a-zA-Z0-9_]*[A-Z][a-zA-Z0-9_]*\s*\(" src/ --include="*.c" --include="*.h"; then
-          echo "⚠️  Found functions that might not follow snake_case convention"
-          echo "Please ensure all functions use snake_case naming"
-        else
-          echo "✅ Function naming conventions look good"
-        fi
-
-    - name: Check for magic numbers
-      run: |
-        echo "Checking for potential magic numbers..."
-        # Look for numbers > 10 that might be magic numbers (excluding common patterns)
-        if grep -r -E "\b[0-9]{2,}\b" src/ --include="*.c" | grep -v -E "(100|1000|1024|256|255|128|64|32|16|8|4|2|1|0)" | head -10; then
-          echo "⚠️  Found potential magic numbers. Consider using named constants."
-        else
-          echo "✅ No obvious magic numbers found"
-        fi
-
-    - name: Check for TODO/FIXME comments
-      run: |
-        echo "Checking for TODO/FIXME comments..."
-        if grep -r -i -E "(TODO|FIXME|XXX|HACK)" src/ --include="*.c" --include="*.h"; then
-          echo "⚠️  Found TODO/FIXME comments. Consider addressing them before release."
-        else
-          echo "✅ No TODO/FIXME comments found"
-        fi
-
-    - name: Check include order and organization
-      run: |
-        echo "Checking include organization..."
-        find src/ -name "*.c" | while read file; do
-          echo "Checking includes in $file..."
-          # Check if system includes come before local includes
-          if grep -n "#include" "$file" | head -10; then
-            echo "Include order for $file looks reasonable"
+      - name: Check line endings
+        run: |
+          echo "Checking for consistent line endings (LF)..."
+          if file src/**/*.c src/**/*.h | grep -v 'ASCII text$' | grep -v 'UTF-8 Unicode text$'; then
+            echo "❌ Found files with inconsistent or binary content"
+            exit 1
           fi
-        done
+          echo "✅ All source files have consistent line endings"
 
-    - name: Check for consistent brace style
-      run: |
-        echo "Checking brace style consistency..."
-        # Check for opening braces on same line vs new line
-        SAME_LINE=$(grep -r -c "^\s*{" src/ --include="*.c" --include="*.h" | awk -F: '{sum+=$2} END {print sum}' || echo "0")
-        NEW_LINE=$(grep -r -c "{\s*$" src/ --include="*.c" --include="*.h" | awk -F: '{sum+=$2} END {print sum}' || echo "0")
+      - name: Check file encoding
+        run: |
+          echo "Checking file encoding (should be UTF-8 or ASCII)..."
+          find src/ -name "*.c" -o -name "*.h" | while read file; do
+            if ! file "$file" | grep -q -E "(ASCII|UTF-8)"; then
+              echo "❌ File $file has unexpected encoding"
+              exit 1
+            fi
+          done
+          echo "✅ All source files have proper encoding"
 
-        echo "Braces on same line: $SAME_LINE"
-        echo "Braces on new line: $NEW_LINE"
+      - name: Check for consistent header guards
+        run: |
+          echo "Checking header guard patterns..."
+          find src/ -name "*.h" | while read header; do
+            if ! grep -q "#ifndef.*_H" "$header" || ! grep -q "#define.*_H" "$header" || ! grep -q "#endif" "$header"; then
+              echo "⚠️  Header $header might be missing proper header guards"
+            fi
+          done
+          echo "✅ Header guard check completed"
 
-        if [ "$SAME_LINE" -gt 0 ] && [ "$NEW_LINE" -gt 0 ]; then
-          echo "⚠️  Mixed brace styles detected. Please use consistent style."
-        else
-          echo "✅ Brace style appears consistent"
-        fi
+      - name: Check function naming conventions
+        run: |
+          echo "Checking function naming conventions (snake_case)..."
+          # Look for functions that don't follow snake_case
+          if grep -r -E "^[a-zA-Z_][a-zA-Z0-9_]*[A-Z][a-zA-Z0-9_]*\s*\(" src/ --include="*.c" --include="*.h"; then
+            echo "⚠️  Found functions that might not follow snake_case convention"
+            echo "Please ensure all functions use snake_case naming"
+          else
+            echo "✅ Function naming conventions look good"
+          fi
 
-    - name: Check comment style
-      run: |
-        echo "Checking comment style..."
-        # Prefer /* */ for multi-line comments and // for single line
-        C99_COMMENTS=$(grep -r -c "//" src/ --include="*.c" --include="*.h" | awk -F: '{sum+=$2} END {print sum}' || echo "0")
-        C_COMMENTS=$(grep -r -c "/\*" src/ --include="*.c" --include="*.h" | awk -F: '{sum+=$2} END {print sum}' || echo "0")
+      - name: Check for magic numbers
+        run: |
+          echo "Checking for potential magic numbers..."
+          # Look for numbers > 10 that might be magic numbers (excluding common patterns)
+          if grep -r -E "\b[0-9]{2,}\b" src/ --include="*.c" | grep -v -E "(100|1000|1024|256|255|128|64|32|16|8|4|2|1|0)" | head -10; then
+            echo "⚠️  Found potential magic numbers. Consider using named constants."
+          else
+            echo "✅ No obvious magic numbers found"
+          fi
 
-        echo "C99 style comments (//): $C99_COMMENTS"
-        echo "C style comments (/* */): $C_COMMENTS"
-        echo "✅ Comment style check completed"
+      - name: Check for TODO/FIXME comments
+        run: |
+          echo "Checking for TODO/FIXME comments..."
+          if grep -r -i -E "(TODO|FIXME|XXX|HACK)" src/ --include="*.c" --include="*.h"; then
+            echo "⚠️  Found TODO/FIXME comments. Consider addressing them before release."
+          else
+            echo "✅ No TODO/FIXME comments found"
+          fi
 
-    - name: Generate formatting report
-      run: |
-        echo "=== Code Style Summary ===" > format-report.txt
-        echo "✅ Indentation: Using spaces (no tabs found)" >> format-report.txt
-        echo "✅ Line endings: Consistent LF endings" >> format-report.txt
-        echo "✅ Encoding: All files properly encoded" >> format-report.txt
-        echo "✅ Whitespace: No trailing whitespace" >> format-report.txt
-        echo "" >> format-report.txt
-        echo "This automated check validates basic formatting rules." >> format-report.txt
-        echo "For comprehensive formatting, consider running clang-format." >> format-report.txt
+      - name: Check include order and organization
+        run: |
+          echo "Checking include organization..."
+          find src/ -name "*.c" | while read file; do
+            echo "Checking includes in $file..."
+            # Check if system includes come before local includes
+            if grep -n "#include" "$file" | head -10; then
+              echo "Include order for $file looks reasonable"
+            fi
+          done
 
-        cat format-report.txt
+      - name: Check for consistent brace style
+        run: |
+          echo "Checking brace style consistency..."
+          # Check for opening braces on same line vs new line
+          SAME_LINE=$(grep -r -c "^\s*{" src/ --include="*.c" --include="*.h" | awk -F: '{sum+=$2} END {print sum}' || echo "0")
+          NEW_LINE=$(grep -r -c "{\s*$" src/ --include="*.c" --include="*.h" | awk -F: '{sum+=$2} END {print sum}' || echo "0")
 
-    - name: Upload format report
-      uses: actions/upload-artifact@v3
-      with:
-        name: format-report
-        path: format-report.txt
+          echo "Braces on same line: $SAME_LINE"
+          echo "Braces on new line: $NEW_LINE"
+
+          if [ "$SAME_LINE" -gt 0 ] && [ "$NEW_LINE" -gt 0 ]; then
+            echo "⚠️  Mixed brace styles detected. Please use consistent style."
+          else
+            echo "✅ Brace style appears consistent"
+          fi
+
+      - name: Check comment style
+        run: |
+          echo "Checking comment style..."
+          # Prefer /* */ for multi-line comments and // for single line
+          C99_COMMENTS=$(grep -r -c "//" src/ --include="*.c" --include="*.h" | awk -F: '{sum+=$2} END {print sum}' || echo "0")
+          C_COMMENTS=$(grep -r -c "/\*" src/ --include="*.c" --include="*.h" | awk -F: '{sum+=$2} END {print sum}' || echo "0")
+
+          echo "C99 style comments (//): $C99_COMMENTS"
+          echo "C style comments (/* */): $C_COMMENTS"
+          echo "✅ Comment style check completed"
+
+      - name: Generate formatting report
+        run: |
+          echo "=== Code Style Summary ===" > format-report.txt
+          echo "✅ Indentation: Using spaces (no tabs found)" >> format-report.txt
+          echo "✅ Line endings: Consistent LF endings" >> format-report.txt
+          echo "✅ Encoding: All files properly encoded" >> format-report.txt
+          echo "✅ Whitespace: No trailing whitespace" >> format-report.txt
+          echo "" >> format-report.txt
+          echo "This automated check validates basic formatting rules." >> format-report.txt
+          echo "For comprehensive formatting, consider running clang-format." >> format-report.txt
+
+          cat format-report.txt
+
+      - name: Upload format report
+        uses: actions/upload-artifact@v4
+        with:
+          name: format-report
+          path: format-report.txt
 
   clang-format-check:
     name: Clang Format Check
     runs-on: ubuntu-latest
-    continue-on-error: true  # Don't fail the build, just report
+    continue-on-error: true # Don't fail the build, just report
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Install clang-format
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang-format
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
 
-    - name: Create clang-format config
-      run: |
-        cat > .clang-format << 'EOF'
-        ---
-        BasedOnStyle: LLVM
-        IndentWidth: 4
-        UseTab: Never
-        ColumnLimit: 100
-        AllowShortFunctionsOnASingleLine: None
-        AllowShortIfStatementsOnASingleLine: false
-        AllowShortLoopsOnASingleLine: false
-        BreakBeforeBraces: Attach
-        IndentCaseLabels: true
-        SpaceBeforeParens: ControlStatements
-        AlignConsecutiveDeclarations: false
-        AlignConsecutiveAssignments: false
-        PointerAlignment: Right
-        EOF
+      - name: Create clang-format config
+        run: |
+          cat > .clang-format << 'EOF'
+          ---
+          BasedOnStyle: LLVM
+          IndentWidth: 4
+          UseTab: Never
+          ColumnLimit: 100
+          AllowShortFunctionsOnASingleLine: None
+          AllowShortIfStatementsOnASingleLine: false
+          AllowShortLoopsOnASingleLine: false
+          BreakBeforeBraces: Attach
+          IndentCaseLabels: true
+          SpaceBeforeParens: ControlStatements
+          AlignConsecutiveDeclarations: false
+          AlignConsecutiveAssignments: false
+          PointerAlignment: Right
+          EOF
 
-    - name: Check formatting with clang-format
-      run: |
-        echo "Checking code formatting with clang-format..."
+      - name: Check formatting with clang-format
+        run: |
+          echo "Checking code formatting with clang-format..."
 
-        NEEDS_FORMAT=0
-        find src/ -name "*.c" -o -name "*.h" | while read file; do
-          if ! clang-format --dry-run --Werror "$file" > /dev/null 2>&1; then
-            echo "⚠️  File $file would be reformatted by clang-format"
-            echo "--- Current format ---"
-            head -20 "$file"
-            echo "--- Suggested format ---"
-            clang-format "$file" | head -20
+          NEEDS_FORMAT=0
+          find src/ -name "*.c" -o -name "*.h" | while read file; do
+            if ! clang-format --dry-run --Werror "$file" > /dev/null 2>&1; then
+              echo "⚠️  File $file would be reformatted by clang-format"
+              echo "--- Current format ---"
+              head -20 "$file"
+              echo "--- Suggested format ---"
+              clang-format "$file" | head -20
+              echo ""
+              NEEDS_FORMAT=1
+            fi
+          done
+
+          if [ $NEEDS_FORMAT -eq 1 ]; then
             echo ""
-            NEEDS_FORMAT=1
+            echo "💡 To fix formatting issues, run:"
+            echo "   find src/ -name '*.c' -o -name '*.h' | xargs clang-format -i"
+            echo ""
+            echo "Or install the clang-format git hook for automatic formatting."
+          else
+            echo "✅ All files are properly formatted"
           fi
-        done
 
-        if [ $NEEDS_FORMAT -eq 1 ]; then
-          echo ""
-          echo "💡 To fix formatting issues, run:"
-          echo "   find src/ -name '*.c' -o -name '*.h' | xargs clang-format -i"
-          echo ""
-          echo "Or install the clang-format git hook for automatic formatting."
-        else
-          echo "✅ All files are properly formatted"
-        fi
+      - name: Generate clang-format diff
+        run: |
+          echo "Generating formatting differences..."
+          find src/ -name "*.c" -o -name "*.h" | while read file; do
+            if ! clang-format --dry-run --Werror "$file" > /dev/null 2>&1; then
+              echo "=== Formatting diff for $file ===" >> clang-format-diff.txt
+              diff -u "$file" <(clang-format "$file") >> clang-format-diff.txt || true
+              echo "" >> clang-format-diff.txt
+            fi
+          done
 
-    - name: Generate clang-format diff
-      run: |
-        echo "Generating formatting differences..."
-        find src/ -name "*.c" -o -name "*.h" | while read file; do
-          if ! clang-format --dry-run --Werror "$file" > /dev/null 2>&1; then
-            echo "=== Formatting diff for $file ===" >> clang-format-diff.txt
-            diff -u "$file" <(clang-format "$file") >> clang-format-diff.txt || true
-            echo "" >> clang-format-diff.txt
+          if [ -f clang-format-diff.txt ]; then
+            echo "Formatting differences found. See artifact for details."
+          else
+            echo "No formatting differences found." > clang-format-diff.txt
           fi
-        done
 
-        if [ -f clang-format-diff.txt ]; then
-          echo "Formatting differences found. See artifact for details."
-        else
-          echo "No formatting differences found." > clang-format-diff.txt
-        fi
-
-    - name: Upload clang-format diff
-      uses: actions/upload-artifact@v3
-      if: always()
-      with:
-        name: clang-format-diff
-        path: clang-format-diff.txt
+      - name: Upload clang-format diff
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: clang-format-diff
+          path: clang-format-diff.txt

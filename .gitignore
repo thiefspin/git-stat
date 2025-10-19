@@ -1,0 +1,38 @@
+# Build artifacts
+*.o
+git-stat
+
+# Debug builds
+git-stat-debug
+
+# Distribution files
+*.tar.gz
+*.zip
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+*.exe
+
+# Backup files
+*.bak
+*.orig
+
+# Core dumps
+core
+core.*
+
+# Static analysis
+*.plist
+
+# Temporary files
+*.tmp

@@ -19,6 +19,7 @@ void safe_string_copy(char* dest, const char* src, size_t dest_size) {
 /**
  * Remove trailing newline from string
  */
+// cppcheck-suppress constParameterPointer
 void remove_trailing_newline(char* str) {
     assert(str != NULL);
 

@@ -249,6 +249,7 @@ jobs:
           update: true
           install: >-
             ${{ matrix.package-prefix }}-gcc
+            zip
             git
 
       - name: Build

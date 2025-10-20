@@ -3,7 +3,6 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [main, develop]
-    tags: ["v*"]
   pull_request:
     branches: [main]
   release:
@@ -507,7 +506,7 @@ jobs:
   # Create release artifacts
   release:
     name: Create Release
-    if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'release'
     needs: [lint, build-and-test, build-windows, security-scan, documentation]
     runs-on: ubuntu-latest
     permissions:

@@ -1,6 +1,8 @@
 name: Release
 
 on:
+  push:
+    tags: ["v*"]
   release:
     types: [published]
   workflow_dispatch:
@@ -247,14 +249,12 @@ jobs:
           update: true
           install: >-
             ${{ matrix.package-prefix }}-gcc
-            ${{ matrix.package-prefix }}-make
             git
 
       - name: Build
         shell: msys2 {0}
         run: |
-          make clean
-          make CC=gcc CFLAGS="${{ env.CFLAGS }}"
+          gcc ${{ env.CFLAGS }} -o git-stat.exe src/main.c src/git_stats.c src/analysis/hotspots.c src/analysis/activity.c src/output/human_output.c src/output/json_output.c src/utils/string_utils.c src/utils/git_commands.c -lm
 
           # Test the binary
           ./git-stat.exe --help
@@ -455,16 +455,26 @@ jobs:
           EOF
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ needs.validate-release.outputs.tag }}
-          name: Git Statistics Utility ${{ needs.validate-release.outputs.tag }}
-          body_path: release_notes.md
-          draft: false
-          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
-          files: |
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check if release already exists
+          if gh release view ${{ needs.validate-release.outputs.tag }} >/dev/null 2>&1; then
+            echo "Release ${{ needs.validate-release.outputs.tag }} already exists, deleting it first"
+            gh release delete ${{ needs.validate-release.outputs.tag }} --yes || true
+          fi
+
+          # Create the release
+          PRERELEASE_FLAG=""
+          if [ "${{ github.event.inputs.prerelease }}" = "true" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          gh release create ${{ needs.validate-release.outputs.tag }} \
+            --title "Git Statistics Utility ${{ needs.validate-release.outputs.tag }}" \
+            --notes-file release_notes.md \
+            $PRERELEASE_FLAG \
             release-assets/*
-          generate_release_notes: false
 
   # Update existing release if triggered by release event
   update-release:
@@ -499,11 +509,11 @@ jobs:
           cat *.sha256 > checksums.txt
 
       - name: Upload Release Assets
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ github.event.release.tag_name }}
-          files: |
-            release-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Upload additional assets to existing release
+          gh release upload ${{ github.event.release.tag_name }} release-assets/*
 
   # Post-release tasks
   post-release:

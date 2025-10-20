@@ -542,57 +542,56 @@ jobs:
         run: |
           sha256sum git-stat-${{ github.ref_name }}-*.tar.gz git-stat-${{ github.ref_name }}-*.zip > checksums.txt
 
-      - name: Upload release assets
-        uses: softprops/action-gh-release@v1
+      - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: Git-Stat ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-          files: |
-            git-stat-${{ github.ref_name }}-source.tar.gz
-            git-stat-${{ github.ref_name }}-linux-x86_64.tar.gz
-            git-stat-${{ github.ref_name }}-macos-x86_64.tar.gz
-            git-stat-${{ github.ref_name }}-windows-x86_64.zip
+        run: |
+          # Check if release already exists
+          if gh release view ${{ github.ref_name }} >/dev/null 2>&1; then
+            echo "Release ${{ github.ref_name }} already exists, deleting it first"
+            gh release delete ${{ github.ref_name }} --yes || true
+          fi
+
+          # Create the release
+          gh release create ${{ github.ref_name }} \
+            --title "Git-Stat ${{ github.ref_name }}" \
+            --notes "## Git Statistics Utility ${{ github.ref_name }}
+
+          ### Installation
+
+          **Linux/macOS:**
+          \`\`\`bash
+          # Download and extract
+          tar -xzf git-stat-${{ github.ref_name }}-linux-x86_64.tar.gz
+          # or
+          tar -xzf git-stat-${{ github.ref_name }}-macos-x86_64.tar.gz
+
+          # Install
+          chmod +x git-stat
+          mv git-stat ~/.local/bin/
+          \`\`\`
+
+          **Windows:**
+          \`\`\`cmd
+          # Extract git-stat-${{ github.ref_name }}-windows-x86_64.zip
+          # Add git-stat.exe to your PATH
+          \`\`\`
+
+          **From Source:**
+          \`\`\`bash
+          tar -xzf git-stat-${{ github.ref_name }}-source.tar.gz
+          cd git-stat-${{ github.ref_name }}
+          make
+          make install-user
+          \`\`\`
+
+          ### Verification
+          All binaries are built automatically and checksums are provided in \`checksums.txt\`." \
+            git-stat-${{ github.ref_name }}-source.tar.gz \
+            git-stat-${{ github.ref_name }}-linux-x86_64.tar.gz \
+            git-stat-${{ github.ref_name }}-macos-x86_64.tar.gz \
+            git-stat-${{ github.ref_name }}-windows-x86_64.zip \
             checksums.txt
-          body: |
-            ## Git Statistics Utility ${{ github.ref_name }}
-
-            ### Installation
-
-            **Linux/macOS:**
-            ```bash
-            # Download and extract
-            tar -xzf git-stat-${{ github.ref_name }}-linux-x86_64.tar.gz
-            # or
-            tar -xzf git-stat-${{ github.ref_name }}-macos-x86_64.tar.gz
-
-            # Install
-            chmod +x git-stat
-            mv git-stat ~/.local/bin/
-            ```
-
-            **Windows:**
-            ```cmd
-            # Extract git-stat-${{ github.ref_name }}-windows-x86_64.zip
-            # Add git-stat.exe to your PATH
-            ```
-
-            **From Source:**
-            ```bash
-            tar -xzf git-stat-${{ github.ref_name }}-source.tar.gz
-            cd git-stat-${{ github.ref_name }}
-            make
-            make install-user
-            ```
-
-            ### Verification
-            All binaries are built automatically and checksums are provided in `checksums.txt`.
-
-            ### Changes
-            See CHANGELOG.md for detailed changes in this release.
 
   # Nightly builds for development
   nightly:

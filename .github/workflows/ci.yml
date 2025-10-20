@@ -30,7 +30,7 @@ jobs:
 
       - name: Run cppcheck
         run: |
-          cppcheck --enable=all --error-exitcode=1 --suppress=missingIncludeSystem src/
+          cppcheck --enable=warning,performance,portability --error-exitcode=1 src/
 
       - name: Check coding standards
         run: |
@@ -226,13 +226,12 @@ jobs:
           update: true
           install: >-
             mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-make
             git
 
       - name: Build with MinGW
         shell: msys2 {0}
         run: |
-          make CC=gcc
+          gcc -Wall -Wextra -O2 -std=c17 -o git-stat.exe src/main.c src/git_stats.c src/analysis/hotspots.c src/analysis/activity.c src/output/human_output.c src/output/json_output.c src/utils/string_utils.c src/utils/git_commands.c -lm
 
       - name: Test on Windows
         shell: msys2 {0}

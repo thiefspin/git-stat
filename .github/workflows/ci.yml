@@ -12,6 +12,10 @@ on:
 env:
   BUILD_TYPE: Release
 
+permissions:
+  contents: write
+  packages: read
+
 jobs:
   # Code Quality and Linting
   lint:
@@ -506,6 +510,9 @@ jobs:
     if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v')
     needs: [lint, build-and-test, build-windows, security-scan, documentation]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: read
 
     steps:
       - uses: actions/checkout@v4
@@ -537,7 +544,13 @@ jobs:
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          tag_name: ${{ github.ref_name }}
+          name: Git-Stat ${{ github.ref_name }}
+          draft: false
+          prerelease: false
           files: |
             git-stat-${{ github.ref_name }}-source.tar.gz
             git-stat-${{ github.ref_name }}-linux-x86_64.tar.gz

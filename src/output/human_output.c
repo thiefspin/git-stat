@@ -1,7 +1,5 @@
 #include "formatters.h"
 #include "../git_stats.h"
-#include "../analysis/hotspots.h"
-#include "../analysis/activity.h"
 #include "../version.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,10 +11,10 @@
  */
 void print_stats_human(const GitStats *stats, AnalysisMode mode) {
     assert(stats != NULL);
-    
+
     printf("Repository Statistics for: %s\n", stats->repo_name);
     printf("==========================================\n\n");
-    
+
     printf("📊 General Information:\n");
     printf("  Current Branch: %s\n", stats->current_branch);
     printf("  Total Commits: %d\n", stats->total_commits);
@@ -24,68 +22,68 @@ void print_stats_human(const GitStats *stats, AnalysisMode mode) {
     printf("  Total Branches: %d\n", stats->total_branches);
     printf("  Total Files: %d\n", stats->total_files);
     printf("  Total Lines of Code: %ld\n\n", stats->total_lines);
-    
+
     /* Print top contributors */
     printf("👥 Top Contributors:\n");
-    int authors_to_show = (stats->total_authors < MAX_AUTHORS_DISPLAY) ? 
+    int authors_to_show = (stats->total_authors < MAX_AUTHORS_DISPLAY) ?
                          stats->total_authors : MAX_AUTHORS_DISPLAY;
-    
+
     for (int i = 0; i < authors_to_show; i++) {
-        printf("  %2d. %-30s %4d commits", i + 1, 
+        printf("  %2d. %-30s %4d commits", i + 1,
                stats->authors[i].name, stats->authors[i].commit_count);
         if (stats->authors[i].lines_added > 0 || stats->authors[i].lines_deleted > 0) {
-            printf(" (+%d/-%d lines)", stats->authors[i].lines_added, 
+            printf(" (+%d/-%d lines)", stats->authors[i].lines_added,
                    stats->authors[i].lines_deleted);
         }
         printf("\n");
     }
     printf("\n");
-    
+
     /* Print branches */
     printf("🌿 Branches:\n");
-    int branches_to_show = (stats->total_branches < MAX_BRANCHES_DISPLAY) ? 
+    int branches_to_show = (stats->total_branches < MAX_BRANCHES_DISPLAY) ?
                           stats->total_branches : MAX_BRANCHES_DISPLAY;
-    
+
     for (int i = 0; i < branches_to_show; i++) {
-        printf("  %-20s %4d commits\n", stats->branches[i].name, 
+        printf("  %-20s %4d commits\n", stats->branches[i].name,
                stats->branches[i].commit_count);
     }
     if (stats->total_branches > MAX_BRANCHES_DISPLAY) {
-        printf("  ... and %d more branches\n", 
+        printf("  ... and %d more branches\n",
                stats->total_branches - MAX_BRANCHES_DISPLAY);
     }
     printf("\n");
-    
+
     /* Print file types */
     printf("📁 File Types:\n");
     if (stats->file_type_count > 0) {
         /* Create a copy for sorting */
         FileType temp_types[MAX_FILE_TYPES];
-        memcpy(temp_types, stats->file_types, 
+        memcpy(temp_types, stats->file_types,
                sizeof(FileType) * stats->file_type_count); // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
-        
+
         /* Sort by count */
-        qsort(temp_types, stats->file_type_count, sizeof(FileType), 
+        qsort(temp_types, stats->file_type_count, sizeof(FileType),
               compare_file_types_by_count);
-        
-        int types_to_show = (stats->file_type_count < MAX_FILE_TYPES_DISPLAY) ? 
+
+        int types_to_show = (stats->file_type_count < MAX_FILE_TYPES_DISPLAY) ?
                            stats->file_type_count : MAX_FILE_TYPES_DISPLAY;
-        
+
         for (int i = 0; i < types_to_show; i++) {
-            double percentage = (stats->total_lines > 0) ? 
+            double percentage = (stats->total_lines > 0) ?
                                (double)temp_types[i].total_lines * 100.0 / stats->total_lines : 0.0;
-            printf("  %-10s %4d files, %8ld lines (%5.1f%%)\n", 
-                   temp_types[i].extension, temp_types[i].count, 
+            printf("  %-10s %4d files, %8ld lines (%5.1f%%)\n",
+                   temp_types[i].extension, temp_types[i].count,
                    temp_types[i].total_lines, percentage);
         }
-        
+
         if (stats->file_type_count > MAX_FILE_TYPES_DISPLAY) {
-            printf("  ... and %d more file types\n", 
+            printf("  ... and %d more file types\n",
                    stats->file_type_count - MAX_FILE_TYPES_DISPLAY);
         }
     }
     printf("\n");
-    
+
     /* Print additional analysis based on mode */
     if (mode == ANALYSIS_HOTSPOTS) {
         print_hotspots_human(stats);
@@ -99,18 +97,18 @@ void print_stats_human(const GitStats *stats, AnalysisMode mode) {
  */
 void print_hotspots_human(const GitStats *stats) {
     assert(stats != NULL);
-    
+
     printf("🔥 Hotspot Analysis (Files with High Churn):\n");
-    
+
     if (stats->hotspot_count == 0) {
         printf("  No hotspots found.\n\n");
         return;
     }
-    
+
     int hotspots_to_show = (stats->hotspot_count < 15) ? stats->hotspot_count : 15;
-    
+
     for (int i = 0; i < hotspots_to_show; i++) {
-        printf("  %2d. %-40s %3d commits, +%d/-%d lines (score: %.1f)\n", 
+        printf("  %2d. %-40s %3d commits, +%d/-%d lines (score: %.1f)\n",
                i + 1,
                stats->hotspots[i].filename,
                stats->hotspots[i].commit_count,
@@ -118,11 +116,11 @@ void print_hotspots_human(const GitStats *stats) {
                stats->hotspots[i].lines_deleted,
                stats->hotspots[i].hotspot_score);
     }
-    
+
     if (stats->hotspot_count > 15) {
         printf("  ... and %d more files\n", stats->hotspot_count - 15);
     }
-    
+
     printf("\n");
     printf("  📊 Hotspot Score = commits × √(lines_added + lines_deleted + 1)\n");
     printf("  💡 High scores indicate files that change frequently with significant modifications\n");
@@ -134,30 +132,30 @@ void print_hotspots_human(const GitStats *stats) {
  */
 void print_activity_human(const GitStats *stats) {
     assert(stats != NULL);
-    
+
     printf("📈 Author Activity Analysis:\n");
-    
+
     if (stats->activity_count == 0) {
         printf("  No activity data found.\n\n");
         return;
     }
-    
+
     /* Count active vs inactive contributors */
     int active_count = 0;
     int single_commit_count = 0;
-    
+
     for (int i = 0; i < stats->activity_count; i++) {
         if (stats->activities[i].is_active) active_count++;
         if (stats->activities[i].commit_count == 1) single_commit_count++;
     }
-    
+
     printf("  📊 Summary: %d total contributors, %d active (< 90 days), %d single-commit\n\n",
            stats->activity_count, active_count, single_commit_count);
-    
+
     /* Show top contributors by activity score */
     printf("  🏆 Top Contributors by Activity:\n");
     int contributors_to_show = (stats->activity_count < 10) ? stats->activity_count : 10;
-    
+
     for (int i = 0; i < contributors_to_show; i++) {
         const char* status = stats->activities[i].is_active ? "ACTIVE" : "INACTIVE";
         printf("  %2d. %-25s %3d commits, last: %s (%d days ago) [%s]\n",
@@ -168,7 +166,7 @@ void print_activity_human(const GitStats *stats) {
                stats->activities[i].days_since_last_commit,
                status);
     }
-    
+
     printf("\n  📅 Activity Details:\n");
     for (int i = 0; i < contributors_to_show; i++) {
         printf("      %s: %s → %s (%d commits, +%d/-%d lines, score: %.1f)\n",
@@ -180,7 +178,7 @@ void print_activity_human(const GitStats *stats) {
                stats->activities[i].lines_deleted,
                stats->activities[i].activity_score);
     }
-    
+
     printf("\n  💡 Activity Score = commits × (10000 / (days_since_last + 1)) × log(lines + 1)\n");
     printf("  ✨ Higher scores indicate recent, frequent, and substantial contributors\n");
     printf("\n");

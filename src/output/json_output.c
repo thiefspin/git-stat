@@ -10,13 +10,13 @@
  */
 void print_stats_json(const GitStats *stats, AnalysisMode mode) {
     assert(stats != NULL);
-    
+
     printf("{\n");
     printf("  \"repository\": {\n");
     printf("    \"name\": \"%s\",\n", stats->repo_name);
     printf("    \"current_branch\": \"%s\"\n", stats->current_branch);
     printf("  },\n");
-    
+
     printf("  \"summary\": {\n");
     printf("    \"total_commits\": %d,\n", stats->total_commits);
     printf("    \"total_authors\": %d,\n", stats->total_authors);
@@ -24,10 +24,10 @@ void print_stats_json(const GitStats *stats, AnalysisMode mode) {
     printf("    \"total_files\": %d,\n", stats->total_files);
     printf("    \"total_lines\": %ld\n", stats->total_lines);
     printf("  },\n");
-    
+
     /* Authors array */
     printf("  \"authors\": [\n");
-    int authors_to_show = (stats->total_authors < MAX_AUTHORS_DISPLAY) ? 
+    int authors_to_show = (stats->total_authors < MAX_AUTHORS_DISPLAY) ?
                          stats->total_authors : MAX_AUTHORS_DISPLAY;
     for (int i = 0; i < authors_to_show; i++) {
         printf("    {\n");
@@ -38,19 +38,19 @@ void print_stats_json(const GitStats *stats, AnalysisMode mode) {
         printf("    }%s\n", (i < authors_to_show - 1) ? "," : "");
     }
     printf("  ],\n");
-    
+
     /* File types array */
     printf("  \"file_types\": [\n");
     if (stats->file_type_count > 0) {
         FileType temp_types[MAX_FILE_TYPES];
         memcpy(temp_types, stats->file_types, sizeof(FileType) * stats->file_type_count); // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
         qsort(temp_types, stats->file_type_count, sizeof(FileType), compare_file_types_by_count);
-        
-        int types_to_show = (stats->file_type_count < MAX_FILE_TYPES_DISPLAY) ? 
+
+        int types_to_show = (stats->file_type_count < MAX_FILE_TYPES_DISPLAY) ?
                            stats->file_type_count : MAX_FILE_TYPES_DISPLAY;
-        
+
         for (int i = 0; i < types_to_show; i++) {
-            double percentage = (stats->total_lines > 0) ? 
+            double percentage = (stats->total_lines > 0) ?
                                (double)temp_types[i].total_lines * 100.0 / stats->total_lines : 0.0;
             printf("    {\n");
             printf("      \"extension\": \"%s\",\n", temp_types[i].extension);
@@ -61,7 +61,7 @@ void print_stats_json(const GitStats *stats, AnalysisMode mode) {
         }
     }
     printf("  ]");
-    
+
     /* Add analysis-specific sections */
     if (mode == ANALYSIS_HOTSPOTS) {
         printf(",\n");
@@ -72,7 +72,7 @@ void print_stats_json(const GitStats *stats, AnalysisMode mode) {
     } else {
         printf("\n");
     }
-    
+
     printf("}\n");
 }
 
@@ -81,11 +81,11 @@ void print_stats_json(const GitStats *stats, AnalysisMode mode) {
  */
 void print_hotspots_json(const GitStats *stats) {
     assert(stats != NULL);
-    
+
     printf("  \"hotspots\": [\n");
     if (stats->hotspot_count > 0) {
         int hotspots_to_show = (stats->hotspot_count < 15) ? stats->hotspot_count : 15;
-        
+
         for (int i = 0; i < hotspots_to_show; i++) {
             printf("    {\n");
             printf("      \"filename\": \"%s\",\n", stats->hotspots[i].filename);
@@ -104,26 +104,26 @@ void print_hotspots_json(const GitStats *stats) {
  */
 void print_activity_json(const GitStats *stats) {
     assert(stats != NULL);
-    
+
     /* Calculate summary statistics */
     int active_count = 0;
     int single_commit_count = 0;
-    
+
     for (int i = 0; i < stats->activity_count; i++) {
         if (stats->activities[i].is_active) active_count++;
         if (stats->activities[i].commit_count == 1) single_commit_count++;
     }
-    
+
     printf("  \"activity_summary\": {\n");
     printf("    \"total_contributors\": %d,\n", stats->activity_count);
     printf("    \"active_contributors\": %d,\n", active_count);
     printf("    \"single_commit_contributors\": %d\n", single_commit_count);
     printf("  },\n");
-    
+
     printf("  \"author_activity\": [\n");
     if (stats->activity_count > 0) {
         int contributors_to_show = (stats->activity_count < 15) ? stats->activity_count : 15;
-        
+
         for (int i = 0; i < contributors_to_show; i++) {
             printf("    {\n");
             printf("      \"name\": \"%s\",\n", stats->activities[i].name);

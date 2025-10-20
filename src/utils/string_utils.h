@@ -15,7 +15,7 @@ void safe_string_copy(char* dest, const char* src, size_t dest_size);
  * Remove trailing newline from string
  * @param str String to modify (modified in place)
  */
-void remove_trailing_newline(char* str);
+void remove_trailing_newline(char * const str);
 
 /**
  * Extract file extension from filename

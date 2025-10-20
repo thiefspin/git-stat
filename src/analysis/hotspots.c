@@ -97,7 +97,7 @@ static double calculate_hotspot_score(int commits, int lines_added, int lines_de
 
     int total_lines = lines_added + lines_deleted;
 
-    /* Score = commits × √(total_lines + 1) */
+    /* Score = commits * sqrt(total_lines + 1) */
     /* The +1 prevents sqrt(0) and gives small weight to files with commits but no line data */
     return (double)commits * sqrt((double)(total_lines + 1));
 }

@@ -19,7 +19,7 @@ void print_stats_human(const GitStats *stats, AnalysisMode mode) {
     printf("Repository Statistics for: %s\n", stats->repo_name);
     printf("==========================================\n\n");
 
-    printf("📊 General Information:\n");
+    printf("General Information:\n");
     printf("  Current Branch: %s\n", stats->current_branch);
     printf("  Total Commits: %d\n", stats->total_commits);
     printf("  Total Authors: %d\n", stats->total_authors);
@@ -28,7 +28,7 @@ void print_stats_human(const GitStats *stats, AnalysisMode mode) {
     printf("  Total Lines of Code: %ld\n\n", stats->total_lines);
 
     /* Print top contributors */
-    printf("👥 Top Contributors:\n");
+    printf("Top Contributors:\n");
     int authors_to_show = (stats->total_authors < MAX_AUTHORS_DISPLAY) ?
                          stats->total_authors : MAX_AUTHORS_DISPLAY;
 
@@ -44,7 +44,7 @@ void print_stats_human(const GitStats *stats, AnalysisMode mode) {
     printf("\n");
 
     /* Print branches */
-    printf("🌿 Branches:\n");
+    printf("Branches:\n");
     int branches_to_show = (stats->total_branches < MAX_BRANCHES_DISPLAY) ?
                           stats->total_branches : MAX_BRANCHES_DISPLAY;
 
@@ -59,7 +59,7 @@ void print_stats_human(const GitStats *stats, AnalysisMode mode) {
     printf("\n");
 
     /* Print file types */
-    printf("📁 File Types:\n");
+    printf("File Types:\n");
     if (stats->file_type_count > 0) {
         /* Create a copy for sorting */
         FileType temp_types[MAX_FILE_TYPES];
@@ -102,7 +102,7 @@ void print_stats_human(const GitStats *stats, AnalysisMode mode) {
 static void print_hotspots_human(const GitStats *stats) {
     assert(stats != NULL);
 
-    printf("🔥 Hotspot Analysis (Files with High Churn):\n");
+    printf("Hotspot Analysis (Files with High Churn):\n");
 
     if (stats->hotspot_count == 0) {
         printf("  No hotspots found.\n\n");
@@ -126,8 +126,8 @@ static void print_hotspots_human(const GitStats *stats) {
     }
 
     printf("\n");
-    printf("  📊 Hotspot Score = commits × √(lines_added + lines_deleted + 1)\n");
-    printf("  💡 High scores indicate files that change frequently with significant modifications\n");
+    printf("  Hotspot Score = commits * sqrt(lines_added + lines_deleted + 1)\n");
+    printf("  High scores indicate files that change frequently with significant modifications\n");
     printf("\n");
 }
 
@@ -137,7 +137,7 @@ static void print_hotspots_human(const GitStats *stats) {
 static void print_activity_human(const GitStats *stats) {
     assert(stats != NULL);
 
-    printf("📈 Author Activity Analysis:\n");
+    printf("Author Activity Analysis:\n");
 
     if (stats->activity_count == 0) {
         printf("  No activity data found.\n\n");
@@ -153,11 +153,11 @@ static void print_activity_human(const GitStats *stats) {
         if (stats->activities[i].commit_count == 1) single_commit_count++;
     }
 
-    printf("  📊 Summary: %d total contributors, %d active (< 90 days), %d single-commit\n\n",
+    printf("  Summary: %d total contributors, %d active (< 90 days), %d single-commit\n\n",
            stats->activity_count, active_count, single_commit_count);
 
     /* Show top contributors by activity score */
-    printf("  🏆 Top Contributors by Activity:\n");
+    printf("  Top Contributors by Activity:\n");
     int contributors_to_show = (stats->activity_count < 10) ? stats->activity_count : 10;
 
     for (int i = 0; i < contributors_to_show; i++) {
@@ -171,9 +171,9 @@ static void print_activity_human(const GitStats *stats) {
                status);
     }
 
-    printf("\n  📅 Activity Details:\n");
+    printf("\n  Activity Details:\n");
     for (int i = 0; i < contributors_to_show; i++) {
-        printf("      %s: %s → %s (%d commits, +%d/-%d lines, score: %.1f)\n",
+        printf("      %s: %s -> %s (%d commits, +%d/-%d lines, score: %.1f)\n",
                stats->activities[i].name,
                stats->activities[i].first_commit_date,
                stats->activities[i].last_commit_date,
@@ -183,8 +183,8 @@ static void print_activity_human(const GitStats *stats) {
                stats->activities[i].activity_score);
     }
 
-    printf("\n  💡 Activity Score = commits × (10000 / (days_since_last + 1)) × log(lines + 1)\n");
-    printf("  ✨ Higher scores indicate recent, frequent, and substantial contributors\n");
+    printf("\n  Activity Score = commits * (10000 / (days_since_last + 1)) * log(lines + 1)\n");
+    printf("  Higher scores indicate recent, frequent, and substantial contributors\n");
     printf("\n");
 }
 
@@ -204,13 +204,13 @@ void print_help(void) {
     printf("  --hotspots          Analyze and display file hotspots (high churn)\n");
     printf("  --activity          Analyze author activity over time\n\n");
     printf("Features:\n");
-    printf("  • Repository overview (commits, authors, branches, files)\n");
-    printf("  • Top contributors with commit counts and line changes\n");
-    printf("  • Branch information and commit counts\n");
-    printf("  • File type analysis with line counts and percentages\n");
-    printf("  • Hotspot detection for identifying high-churn files\n");
-    printf("  • Author activity analysis over time\n");
-    printf("  • Works completely offline with local git data\n\n");
+    printf("  - Repository overview (commits, authors, branches, files)\n");
+    printf("  - Top contributors with commit counts and line changes\n");
+    printf("  - Branch information and commit counts\n");
+    printf("  - File type analysis with line counts and percentages\n");
+    printf("  - Hotspot detection for identifying high-churn files\n");
+    printf("  - Author activity analysis over time\n");
+    printf("  - Works completely offline with local git data\n\n");
     printf("Examples:\n");
     printf("  git-stat                    # Analyze current repository\n");
     printf("  git-stat --hotspots         # Include hotspot analysis\n");

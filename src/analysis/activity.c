@@ -128,7 +128,7 @@ static double calculate_activity_score(int commits, int days_since_last, int lin
     /* Line change factor: log scale to prevent huge commits from dominating */
     double lines_factor = log((double)(lines_changed + 1));
 
-    /* Score = commits × recency_factor × lines_factor */
+    /* Score = commits * recency_factor * lines_factor */
     return (double)commits * recency_factor * lines_factor;
 }
 

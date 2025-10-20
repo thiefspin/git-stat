@@ -11,7 +11,7 @@
 /**
  * Parse command line arguments
  */
-static int parse_arguments(int argc, char *argv[], OutputFormat *format, AnalysisMode *mode) {
+static int parse_arguments(int argc, const char *const argv[], OutputFormat *format, AnalysisMode *mode) {
     assert(format != NULL);
     assert(mode != NULL);
 
@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
     AnalysisMode analysis_mode = ANALYSIS_BASIC;
 
     /* Parse command line arguments */
-    int parse_result = parse_arguments(argc, argv, &output_format, &analysis_mode);
+    int parse_result = parse_arguments(argc, (const char *const *)argv, &output_format, &analysis_mode);
     if (parse_result == EXIT_HELP_SHOWN || parse_result == EXIT_VERSION_SHOWN) {
         return EXIT_SUCCESS_CODE;
     }

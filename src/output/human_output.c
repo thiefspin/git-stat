@@ -6,6 +6,10 @@
 #include <string.h>
 #include <assert.h>
 
+/* Forward declarations */
+static void print_hotspots_human(const GitStats *stats);
+static void print_activity_human(const GitStats *stats);
+
 /**
  * Print comprehensive statistics in human-readable format
  */
@@ -95,7 +99,7 @@ void print_stats_human(const GitStats *stats, AnalysisMode mode) {
 /**
  * Print hotspot analysis in human-readable format
  */
-void print_hotspots_human(const GitStats *stats) {
+static void print_hotspots_human(const GitStats *stats) {
     assert(stats != NULL);
 
     printf("🔥 Hotspot Analysis (Files with High Churn):\n");
@@ -130,7 +134,7 @@ void print_hotspots_human(const GitStats *stats) {
 /**
  * Print author activity analysis in human-readable format
  */
-void print_activity_human(const GitStats *stats) {
+static void print_activity_human(const GitStats *stats) {
     assert(stats != NULL);
 
     printf("📈 Author Activity Analysis:\n");

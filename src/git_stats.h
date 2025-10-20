@@ -130,11 +130,6 @@ typedef struct {
 int is_git_repository(void);
 void init_git_stats(GitStats *stats);
 int get_basic_git_stats(GitStats *stats);
-int get_repository_info(GitStats *stats);
-int get_commit_stats(GitStats *stats);
-int get_author_stats(GitStats *stats);
-int get_branch_stats(GitStats *stats);
-int get_file_stats(GitStats *stats);
 
 /* Comparison functions for sorting */
 int compare_file_types_by_count(const void* a, const void* b);

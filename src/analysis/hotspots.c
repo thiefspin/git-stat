@@ -8,6 +8,10 @@
 #include <assert.h>
 #include <math.h>
 
+/* Forward declarations */
+static double calculate_hotspot_score(int commits, int lines_added, int lines_deleted);
+static int compare_hotspots_by_score(const void* a, const void* b);
+
 /**
  * Get file hotspot statistics
  */
@@ -88,7 +92,7 @@ int get_hotspot_stats(GitStats *stats) {
 /**
  * Calculate hotspot score based on commits and line changes
  */
-double calculate_hotspot_score(int commits, int lines_added, int lines_deleted) {
+static double calculate_hotspot_score(int commits, int lines_added, int lines_deleted) {
     if (commits <= 0) return 0.0;
 
     int total_lines = lines_added + lines_deleted;
@@ -101,7 +105,7 @@ double calculate_hotspot_score(int commits, int lines_added, int lines_deleted) 
 /**
  * Comparison function for sorting hotspots by score
  */
-int compare_hotspots_by_score(const void* a, const void* b) {
+static int compare_hotspots_by_score(const void* a, const void* b) {
     const FileHotspot* hotspot_a = (const FileHotspot*)a;
     const FileHotspot* hotspot_b = (const FileHotspot*)b;
 

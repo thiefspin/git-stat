@@ -1,9 +1,11 @@
 #include "formatters.h"
 #include "../git_stats.h"
-#include "../analysis/hotspots.h"
-#include "../analysis/activity.h"
-#include <stdio.h>
+#include <string.h>
 #include <assert.h>
+
+/* Forward declarations */
+static void print_hotspots_json(const GitStats *stats);
+static void print_activity_json(const GitStats *stats);
 
 /**
  * Print statistics in JSON format
@@ -79,7 +81,7 @@ void print_stats_json(const GitStats *stats, AnalysisMode mode) {
 /**
  * Print hotspots in JSON format
  */
-void print_hotspots_json(const GitStats *stats) {
+static void print_hotspots_json(const GitStats *stats) {
     assert(stats != NULL);
 
     printf("  \"hotspots\": [\n");
@@ -102,7 +104,7 @@ void print_hotspots_json(const GitStats *stats) {
 /**
  * Print activity analysis in JSON format
  */
-void print_activity_json(const GitStats *stats) {
+static void print_activity_json(const GitStats *stats) {
     assert(stats != NULL);
 
     /* Calculate summary statistics */

@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #ifndef VERSION_H
 #define VERSION_H
 
@@ -50,20 +52,6 @@ static inline const char* get_version_string(void) {
     return version_buffer;
 }
 
-/**
- * Get short version string
- * @return Version string only
- */
-static inline const char* get_short_version(void) {
-    return VERSION_STRING;
-}
 
-/**
- * Check if this is a development version
- * @return 1 if development version, 0 otherwise
- */
-static inline int is_development_version(void) {
-    return (VERSION_PATCH == 0 && strcmp(GIT_COMMIT, "unknown") != 0);
-}
 
 #endif /* VERSION_H */

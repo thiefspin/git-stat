@@ -7,6 +7,13 @@
 #include <string.h>
 #include <assert.h>
 
+/* Forward declarations */
+static int get_repository_info(GitStats *stats);
+static int get_commit_stats(GitStats *stats);
+static int get_author_stats(GitStats *stats);
+static int get_branch_stats(GitStats *stats);
+static int get_file_stats(GitStats *stats);
+
 /**
  * Check if current directory is a git repository
  */
@@ -32,9 +39,7 @@ void init_git_stats(GitStats *stats) {
 int get_basic_git_stats(GitStats *stats) {
     assert(stats != NULL);
 
-    if (get_repository_info(stats) != 0) {
-        fprintf(stderr, "Warning: Failed to get repository information\n");
-    }
+    get_repository_info(stats);
 
     if (get_commit_stats(stats) != 0) {
         fprintf(stderr, "Warning: Failed to get commit statistics\n");
@@ -58,7 +63,7 @@ int get_basic_git_stats(GitStats *stats) {
 /**
  * Get basic repository information
  */
-int get_repository_info(GitStats *stats) {
+static int get_repository_info(GitStats *stats) {
     assert(stats != NULL);
 
     char *result;
@@ -74,7 +79,7 @@ int get_repository_info(GitStats *stats) {
     /* Get repository name from current directory */
     char cwd[MAX_PATH_LENGTH];
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
-        char *repo_name = strrchr(cwd, '/');
+        const char *repo_name = strrchr(cwd, '/');
         if (repo_name != NULL) {
             safe_string_copy(stats->repo_name, repo_name + 1, sizeof(stats->repo_name));
         }
@@ -86,7 +91,7 @@ int get_repository_info(GitStats *stats) {
 /**
  * Get commit statistics
  */
-int get_commit_stats(GitStats *stats) {
+static int get_commit_stats(GitStats *stats) {
     assert(stats != NULL);
 
     char *result = execute_git_command("git rev-list --all --count 2>/dev/null");
@@ -105,7 +110,7 @@ int get_commit_stats(GitStats *stats) {
 /**
  * Get author statistics
  */
-int get_author_stats(GitStats *stats) {
+static int get_author_stats(GitStats *stats) {
     assert(stats != NULL);
 
     FILE *fp;
@@ -167,7 +172,7 @@ int get_author_stats(GitStats *stats) {
 /**
  * Get branch statistics
  */
-int get_branch_stats(GitStats *stats) {
+static int get_branch_stats(GitStats *stats) {
     assert(stats != NULL);
 
     FILE *fp = popen("git branch 2>/dev/null", "r");
@@ -224,7 +229,7 @@ int get_branch_stats(GitStats *stats) {
 /**
  * Get file statistics
  */
-int get_file_stats(GitStats *stats) {
+static int get_file_stats(GitStats *stats) {
     assert(stats != NULL);
 
     FILE *fp = popen("git ls-files 2>/dev/null", "r");

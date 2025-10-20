@@ -8,6 +8,10 @@
 #include <assert.h>
 #include <math.h>
 
+/* Forward declarations */
+static double calculate_activity_score(int commits, int days_since_last, int lines_changed);
+static int compare_activities_by_score(const void* a, const void* b);
+
 /**
  * Get author activity statistics over time
  */
@@ -27,8 +31,8 @@ int get_activity_stats(GitStats *stats) {
         remove_trailing_newline(line);
 
         /* Parse format: author|date|subject */
-        char *author = strtok(line, "|");
-        char *date = strtok(NULL, "|");
+        const char *author = strtok(line, "|");
+        const char *date = strtok(NULL, "|");
 
         if (author == NULL || date == NULL) continue;
 
@@ -115,7 +119,7 @@ int get_activity_stats(GitStats *stats) {
 /**
  * Calculate activity score based on commits, recency, and line changes
  */
-double calculate_activity_score(int commits, int days_since_last, int lines_changed) {
+static double calculate_activity_score(int commits, int days_since_last, int lines_changed) {
     if (commits <= 0) return 0.0;
 
     /* Recency factor: more recent activity gets higher weight */
@@ -131,7 +135,7 @@ double calculate_activity_score(int commits, int days_since_last, int lines_chan
 /**
  * Comparison function for sorting activities by score
  */
-int compare_activities_by_score(const void* a, const void* b) {
+static int compare_activities_by_score(const void* a, const void* b) {
     const AuthorActivity* activity_a = (const AuthorActivity*)a;
     const AuthorActivity* activity_b = (const AuthorActivity*)b;
 

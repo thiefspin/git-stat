@@ -3,6 +3,7 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [main, develop]
+    tags: ["v*"]
   pull_request:
     branches: [main]
   release:
@@ -47,11 +48,13 @@ jobs:
     name: Build and Test
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, macos-14]
         compiler: [gcc, clang]
         exclude:
           # macOS doesn't have gcc in the usual sense (it's clang)
           - os: macos-latest
+            compiler: gcc
+          - os: macos-14
             compiler: gcc
 
     runs-on: ${{ matrix.os }}
@@ -179,6 +182,7 @@ jobs:
           name: git-stat-${{ matrix.os }}-${{ matrix.compiler }}
           path: |
             git-stat
+            git-stat.exe
             *.json
 
       - name: Performance test
@@ -506,7 +510,7 @@ jobs:
   # Create release artifacts
   release:
     name: Create Release
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v')
     needs: [lint, build-and-test, build-windows, security-scan, documentation]
     runs-on: ubuntu-latest
     permissions:
@@ -530,9 +534,13 @@ jobs:
           chmod +x git-stat-ubuntu-latest-gcc/git-stat
           tar -czf git-stat-${{ github.ref_name }}-linux-x86_64.tar.gz -C git-stat-ubuntu-latest-gcc git-stat
 
-          # macOS binary
+          # macOS Intel binary
           chmod +x git-stat-macos-latest-clang/git-stat
           tar -czf git-stat-${{ github.ref_name }}-macos-x86_64.tar.gz -C git-stat-macos-latest-clang git-stat
+
+          # macOS Apple Silicon binary
+          chmod +x git-stat-macos-14-clang/git-stat
+          tar -czf git-stat-${{ github.ref_name }}-macos-arm64.tar.gz -C git-stat-macos-14-clang git-stat
 
           # Windows binary
           zip git-stat-${{ github.ref_name }}-windows-x86_64.zip git-stat-windows/git-stat.exe
@@ -562,8 +570,10 @@ jobs:
           \`\`\`bash
           # Download and extract
           tar -xzf git-stat-${{ github.ref_name }}-linux-x86_64.tar.gz
-          # or
+          # or (Intel Mac)
           tar -xzf git-stat-${{ github.ref_name }}-macos-x86_64.tar.gz
+          # or (Apple Silicon Mac)
+          tar -xzf git-stat-${{ github.ref_name }}-macos-arm64.tar.gz
 
           # Install
           chmod +x git-stat
@@ -589,6 +599,7 @@ jobs:
             git-stat-${{ github.ref_name }}-source.tar.gz \
             git-stat-${{ github.ref_name }}-linux-x86_64.tar.gz \
             git-stat-${{ github.ref_name }}-macos-x86_64.tar.gz \
+            git-stat-${{ github.ref_name }}-macos-arm64.tar.gz \
             git-stat-${{ github.ref_name }}-windows-x86_64.zip \
             checksums.txt
 
